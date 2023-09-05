@@ -22,3 +22,6 @@ go.work
 
 # Environment variables
 .env
+
+# Temporary directory
+tmp/*
