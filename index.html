@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset='utf-8'>
+  <meta http-equiv='X-UA-Compatible' content='IE=edge'>
+  <title>Chat Demo</title>
+  <meta name='viewport' content='width=device-width, initial-scale=1'>
+  <script src="https://unpkg.com/htmx.org@1.9.5"
+    integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO"
+    crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+  <script src="https://unpkg.com/htmx.org/dist/ext/morphdom-swap.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
+  <style>
+    [un-cloak] {
+      display: none
+    }
+  </style>
+</head>
+
+<body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">
+  <div hx-ext="ws,morphdom-swap" ws-connect="/chatroom" class="flex flex-col p-4 container mx-auto max-h-screen">
+    <!-- Header -->
+    <div class="flex-none flex justify-between items-center flex-wrap gap-4">
+      <div>
+        <div class="uppercase"><span class="font-extralight">Chatroom</span> Demo</div>
+        {{ block "online" . -}}
+        <div id="online" class="text-xs text-coolgray-400" hx-swap-oob="true">{{ .NumUsers }} {{ .NumUsers | plural
+          "user" "users" }}</div>
+        {{- end }}
+      </div>
+
+      <div>
+        <span class="text-lightblue-200 text-sm">{{ .User.Name }}</span>
+      </div>
+    </div>
+
+    <!-- Chat messages -->
+    <ul id="messages" class="flex-initial grow mt-4 space-y-2 overflow-y-scroll snap-y transition-all">
+      {{- range .Messages -}}
+      {{ block "message" . }}
+      <li>
+        <div
+          class="w-fit flex flex-col px-3 py-2 mr-4 text-xs bg-coolgray-700 border-t-1 border-t-coolgray-500 border-t-opacity-50 shadow-sm bg-opacity-50 rounded-md snap-end">
+          <div class="font-semibold">{{ .User.Name }} </div>
+          <div class="mt-1 flex flex-justify-between gap-2">
+            <div class="flex-nowrap font-light break-words">{{ .Content }}</div>
+            <div class="self-end shrink-0 mt-1 font-light text-coolgray-400">{{ .Time | ago | durationRound }}</div>
+          </div>
+        </div>
+      </li>
+      {{- end }}
+      {{- end }}
+    </ul>
+
+    <!-- Form -->
+    {{ block "form" . -}}
+    <form id="form" hx-swap-oob="morphdom" class="flex-none mt-4" ws-send>
+      <input name="chat_message" placeholder="Type here" {{ if .Disabled }}disabled{{ end }}
+        class="w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md">
+    </form>
+    {{- end }}
+
+    <!-- Error -->
+    {{ block "error" . -}}
+    <div id="error" hx-swap-oob="true">
+      {{ if .Error }}
+      <div class="flex-none text-red mt-2 text-xs capitalize">{{ .Error }}</div>
+      {{ end }}
+    </div>
+    {{- end }}
+
+    <div class="flex-none mt-4 text-xs text-center text-coolgray-400">Copyright (c) {{ now | date "2006" }}. All rights
+      reserved.
+    </div>
+  </div>
+</body>
+
+</html>
