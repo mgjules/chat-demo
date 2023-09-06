@@ -168,7 +168,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 
 			// Update number of user online for all users.
 			if err := t.ExecuteTemplate(&b, "online", map[string]any{
-				"NumUsers": int(r.numUsers()),
+				"NumUsers": r.numUsers(),
 			}); err != nil {
 				logger.ErrorContext(ctx, "compile online template", "err", err)
 				return
@@ -178,7 +178,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 
 		// Update number of user online for all users.
 		if err := t.ExecuteTemplate(&b, "online", map[string]any{
-			"NumUsers": int(r.numUsers()),
+			"NumUsers": r.numUsers(),
 		}); err != nil {
 			logger.ErrorContext(ctx, "compile online template", "err", err)
 			return
