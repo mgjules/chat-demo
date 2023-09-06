@@ -210,6 +210,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 				continue
 			}
 
+			// Rate limit to prevent abuse.
 			if !limiter.Allow() {
 				// Inform the current user to slow down.
 				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": "why so fast?"}); err != nil {
@@ -223,7 +224,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 
 				b.Reset()
 
-				// Disable the form for 3s.
+				// Disable the form until limiter allows.
 				if err := t.ExecuteTemplate(&b, "form", map[string]any{
 					"Disabled": true,
 				}); err != nil {
@@ -235,7 +236,10 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 					continue
 				}
 
-				<-time.After(3 * time.Second)
+				if err := limiter.Wait(ctx); err != nil {
+                                        logger.ErrorContext(ctx, "limiter wait", "err", err)
+					continue
+				}
 
 				b.Reset()
 
@@ -323,7 +327,7 @@ func protected(next http.Handler) http.Handler {
 		}
 
 		// Retrieve the user from the claims and add it to the request context.
-		// If the user ID invalid attempt login again.
+		// If the user ID is invalid, we attempt login again.
                 // This could lead to an infinite loop if a user has a newer claim format.
 		u := claims["user"].(map[string]any)
 		id, err := xid.FromString(u["ID"].(string))
