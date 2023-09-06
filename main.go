@@ -164,6 +164,8 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 		defer func() {
 			r.removeClient(user.ID)
 
+			b.Reset()
+
 			// Update number of user online for all users.
 			if err := t.ExecuteTemplate(&b, "online", map[string]any{
 				"NumUsers": int(r.numUsers()),
