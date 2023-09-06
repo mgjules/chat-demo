@@ -122,6 +122,7 @@ func login(auth *jwtauth.JWTAuth) http.HandlerFunc {
 			return
 		}
 
+		// Create a fake user and use it as claim to encode a jwt token.
 		_, t, err := auth.Encode(map[string]any{
 			"user": newUser(),
 		})
@@ -163,7 +164,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 		defer func() {
 			r.removeClient(user.ID)
 
-			// Update number user online for all users.
+			// Update number of user online for all users.
 			if err := t.ExecuteTemplate(&b, "online", map[string]any{
 				"NumUsers": int(r.numUsers()),
 			}); err != nil {
@@ -173,7 +174,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 			r.broadcast(b.String())
 		}()
 
-		// Update number user online for all users.
+		// Update number of user online for all users.
 		if err := t.ExecuteTemplate(&b, "online", map[string]any{
 			"NumUsers": int(r.numUsers()),
 		}); err != nil {
@@ -236,7 +237,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 
 				b.Reset()
 
-				// Reeanble the form.
+				// Re-enable the form.
 				if err := t.ExecuteTemplate(&b, "form", map[string]any{
 					"Disabled": false,
 				}); err != nil {
@@ -319,6 +320,9 @@ func protected(next http.Handler) http.Handler {
 			return
 		}
 
+		// Retrieve the user from the claims and add it to the request context.
+		// If the user ID invalid attempt login again.
+                // This could lead to an infinite loop if a user has a newer claim format.
 		u := claims["user"].(map[string]any)
 		id, err := xid.FromString(u["ID"].(string))
 		if err != nil {
