@@ -22,7 +22,7 @@ type user struct {
 // newUser creates a new user.
 func newUser() *user {
 	id := xid.New()
-	// Prevents faker from tracking duplicates since it does that in a non-treadsafe manner.
+	// Prevents faker from tracking duplicates since it does that in a non-threadsafe manner.
 	// Instead we seed the Name with sections of the ID.
 	nonunique := options.WithGenerateUniqueValues(false)
 	return &user{
