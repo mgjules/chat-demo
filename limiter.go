@@ -8,7 +8,7 @@ import (
 )
 
 type limiters struct {
-	mu       sync.RWMutex
+	mu       sync.Mutex
 	limiters map[string]*rate.Limiter
 }
 
