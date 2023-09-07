@@ -132,7 +132,8 @@
 
     <!-- Form -->
     {{ block "form" . -}}
-    <form id="form" hx-swap-oob="true" class="flex-none mt-4" ws-send>
+    <form id="form" hx-swap-oob="true" class="flex-none mt-4" ws-send
+      hx-on::load="this.querySelector('input[name=chat_message]').focus()">
       <input name="chat_message" placeholder="Type here" {{ if .Disabled }}disabled{{ end }}
         class="w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md">
     </form>
