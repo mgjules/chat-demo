@@ -38,7 +38,7 @@ func newMessage(u *user, content string) (*message, error) {
 	return &message{
 		User:    u,
 		Content: content,
-		Time:    time.Now(),
+		Time:    time.Now().UTC(),
 	}, nil
 }
 

@@ -31,12 +31,22 @@
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
 
+  <!-- TimeAgo -->
+  <script src="https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js"></script>
+  <script type="text/javascript">
+    function applyTimeago() {
+      const els = document.querySelectorAll('.timeago')
+      timeago.render(els, 'en_US', { minInterval: 30 })
+      els.forEach((el) => el.classList.remove('timeago'))
+    }
+    document.addEventListener('DOMContentLoaded', applyTimeago)
+  </script>
+
   <!-- Custom -->
   <script type="text/javascript">
-    // Check if UnoCSS is loaded by watching the removal of the `un-cloak` attribute from the body.
-    // If so, scroll to the last messages.
-    // It's a vanilla alternate to `jQuery.ready`.
     document.addEventListener('DOMContentLoaded', function () {
+      // Check if UnoCSS is loaded by watching the removal of the `un-cloak` attribute from the body.
+      // It's a vanilla alternative to `jQuery.ready`.
       const observer = new MutationObserver((mutationList) => {
         mutationList.forEach((mutation) => {
           switch (mutation.type) {
@@ -44,17 +54,19 @@
               switch (mutation.attributeName) {
                 case "un-cloak":
                   // Safe to assume that UnoCSS has loaded.
+                  // Scroll to last message.
                   const el = document.querySelector('#messages>li:last-child')
                   el.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
                   observer.disconnect()
               }
-              break;
+              break
           }
         });
       });
-      observer.observe(document.body, { attributeFilter: ["un-cloak"], attributeOldValue: true })
+      observer.observe(document.body, {
+        attributeFilter: ["un-cloak"],
+      })
     })
-
   </script>
 </head>
 
@@ -76,7 +88,8 @@
     </div>
 
     <!-- Chat messages -->
-    <ul id="messages" class="flex-initial grow mt-4 space-y-2 overflow-y-scroll transition-all">
+    <ul id="messages" class="flex-initial grow mt-4 space-y-2 overflow-y-scroll transition-all"
+      hx-on::load="applyTimeago()">
       {{- range .Messages -}}
       {{ block "message" . }}
       <li class="overflow-anchor-none">
@@ -85,7 +98,7 @@
           <div class="font-semibold">{{ .User.Name }} </div>
           <div class="mt-1 flex flex-justify-between gap-2">
             <div class="flex-nowrap font-light break-words">{{ .Content }}</div>
-            <div class="self-end shrink-0 mt-1 font-light text-coolgray-400">{{ .Time | ago | durationRound }}</div>
+            <div class="timeago self-end shrink-0 mt-1 font-light text-coolgray-400" datetime="{{ .Time }}"></div>
           </div>
         </div>
       </li>

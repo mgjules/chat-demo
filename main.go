@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/Masterminds/sprig/v3"
@@ -75,7 +74,7 @@ func run() error {
 	for i := 0; i < 1000; i++ {
 		msg, _ := newMessage(
 			newUser(),
-			faker.Sentence(options.WithGenerateUniqueValues(false))+" "+strconv.Itoa(i),
+			faker.Sentence(options.WithGenerateUniqueValues(false)),
 		)
 		room.addMessage(msg)
 	}
@@ -237,7 +236,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 				}
 
 				if err := limiter.Wait(ctx); err != nil {
-                                        logger.ErrorContext(ctx, "limiter wait", "err", err)
+					logger.ErrorContext(ctx, "limiter wait", "err", err)
 					continue
 				}
 
@@ -328,7 +327,7 @@ func protected(next http.Handler) http.Handler {
 
 		// Retrieve the user from the claims and add it to the request context.
 		// If the user ID is invalid, we attempt login again.
-                // This could lead to an infinite loop if a user has a newer claim format.
+		// This could lead to an infinite loop if a user has a newer claim format.
 		u := claims["user"].(map[string]any)
 		id, err := xid.FromString(u["ID"].(string))
 		if err != nil {
