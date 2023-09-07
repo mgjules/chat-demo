@@ -37,9 +37,32 @@
     function applyTimeago() {
       // Select only element that has not been processed by timeago yet.
       const els = document.querySelectorAll('.timeago:not([timeago-id])')
-      timeago.render(els, 'en_US', { minInterval: 30 })
+      timeago.render(els, 'mini-locale', { minInterval: 10 })
     }
-    document.addEventListener('DOMContentLoaded', applyTimeago)
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // The defaults locales are too verbose.
+      timeago.register('mini-locale', (number, index, totalSec) => {
+        return [
+          ['now', 'soon'],
+          ['%ss', 'in %ss'],
+          ['1m', 'in 1m'],
+          ['%sm', 'in %sm'],
+          ['1h', 'in 1h'],
+          ['%sh', 'in %sh'],
+          ['1d', 'in 1d'],
+          ['%sd', 'in %sd'],
+          ['1w', 'in 1w'],
+          ['%sw', 'in %sw'],
+          ['1mo', 'in 1mo'],
+          ['%smo', 'in %smo'],
+          ['1yr', 'in 1yr'],
+          ['%syr', 'in %syr']
+        ][index]
+      })
+
+      applyTimeago()
+    })
   </script>
 
   <!-- Custom -->
