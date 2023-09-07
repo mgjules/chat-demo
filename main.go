@@ -22,7 +22,6 @@ import (
 	"github.com/rs/xid"
 	"golang.org/x/exp/slog"
 	"golang.org/x/net/websocket"
-	"golang.org/x/time/rate"
 )
 
 //go:embed *.html
@@ -79,12 +78,14 @@ func run() error {
 		room.addMessage(msg)
 	}
 
+	l := newLimiters()
+
 	// Protected routes.
 	r.Group(func(r chi.Router) {
 		r.Use(protected)
 
 		r.Get("/", index(t, room))
-		r.Handle("/chatroom", websocket.Handler(chat(t, room)))
+		r.Handle("/chatroom", websocket.Handler(chat(t, room, l)))
 	})
 
 	r.Get("/login", login(jwt))
@@ -148,22 +149,36 @@ type data struct {
 	Headers map[string]string `json:"HEADERS"`
 }
 
-func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
+func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		defer ws.Close()
 
-		// Retrieve user from context and add it as client to room.
+		var b bytes.Buffer
+		// Retrieve user from context.
 		ctx := ws.Request().Context()
 		user := userFromContext(ctx)
-		r.addClient(newClient(user, ws))
 
-		// Remove client from room when user disconnects.
-		var b bytes.Buffer
 		logger := slog.Default().With("user.id", user.ID)
-		defer func() {
-			r.removeClient(user.ID)
 
-			b.Reset()
+		// Add user as client to the room and inform others.
+		if r.addClient(user, ws) {
+			// Remove client from room when user disconnects.
+			defer func() {
+				if r.removeClient(user.ID, ws) {
+					l.remove(user)
+
+					b.Reset()
+
+					// Update number of user online for all users.
+					if err := t.ExecuteTemplate(&b, "online", map[string]any{
+						"NumUsers": r.numUsers(),
+					}); err != nil {
+						logger.ErrorContext(ctx, "compile online template", "err", err)
+						return
+					}
+					r.broadcast(b.String())
+				}
+			}()
 
 			// Update number of user online for all users.
 			if err := t.ExecuteTemplate(&b, "online", map[string]any{
@@ -173,18 +188,9 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 				return
 			}
 			r.broadcast(b.String())
-		}()
-
-		// Update number of user online for all users.
-		if err := t.ExecuteTemplate(&b, "online", map[string]any{
-			"NumUsers": r.numUsers(),
-		}); err != nil {
-			logger.ErrorContext(ctx, "compile online template", "err", err)
-			return
 		}
-		r.broadcast(b.String())
 
-		limiter := rate.NewLimiter(rate.Every(5*time.Second), 2)
+		limiter := l.add(user, 5*time.Second, 3)
 
 		for {
 			b.Reset()

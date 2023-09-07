@@ -4,6 +4,8 @@ go 1.20
 
 require (
 	github.com/Masterminds/sprig/v3 v3.2.3
+	github.com/TwiN/go-away v1.6.10
+	github.com/enescakir/emoji v1.0.0
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/jwtauth/v5 v5.1.1
 	github.com/go-faker/faker/v4 v4.1.1
@@ -18,9 +20,7 @@ require (
 require (
 	github.com/Masterminds/goutils v1.1.1 // indirect
 	github.com/Masterminds/semver/v3 v3.2.1 // indirect
-	github.com/TwiN/go-away v1.6.10 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
-	github.com/enescakir/emoji v1.0.0 // indirect
 	github.com/goccy/go-json v0.10.2 // indirect
 	github.com/google/uuid v1.3.1 // indirect
 	github.com/huandu/xstrings v1.4.0 // indirect

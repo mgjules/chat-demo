@@ -43,15 +43,8 @@ func newMessage(u *user, content string) (*message, error) {
 }
 
 type client struct {
-	user *user
-	conn *websocket.Conn
-}
-
-func newClient(u *user, c *websocket.Conn) *client {
-	return &client{
-		user: u,
-		conn: c,
-	}
+	user  *user
+	conns map[*websocket.Conn]struct{}
 }
 
 type room struct {
@@ -67,20 +60,38 @@ func newRoom() *room {
 	}
 }
 
-func (r *room) addClient(c *client) {
-	if c == nil {
-		return
-	}
-
+func (r *room) addClient(u *user, ws *websocket.Conn) bool {
 	r.mu.Lock()
-	r.clients[c.user.ID.String()] = c
-	r.mu.Unlock()
+	defer r.mu.Unlock()
+	id := u.ID.String()
+	var added bool
+	if _, found := r.clients[id]; !found {
+		r.clients[id] = &client{
+			user:  u,
+			conns: make(map[*websocket.Conn]struct{}),
+		}
+		added = true
+	}
+	r.clients[id].conns[ws] = struct{}{}
+
+	return added
 }
 
-func (r *room) removeClient(id xid.ID) {
+func (r *room) removeClient(id xid.ID, ws *websocket.Conn) bool {
 	r.mu.Lock()
-	delete(r.clients, id.String())
-	r.mu.Unlock()
+	defer r.mu.Unlock()
+	_, found := r.clients[id.String()]
+	if !found {
+		return false
+	}
+
+	delete(r.clients[id.String()].conns, ws)
+	if len(r.clients[id.String()].conns) == 0 {
+		delete(r.clients, id.String())
+		return true
+	}
+
+	return false
 }
 
 func (r *room) numUsers() int {
@@ -111,8 +122,10 @@ func (r *room) listMessages() []*message {
 
 func (r *room) broadcast(b string) {
 	for _, c := range r.clients {
-		if err := websocket.Message.Send(c.conn, string(b)); err != nil {
-			slog.WarnContext(c.conn.Request().Context(), "send message", "err", "user.id", c.user.ID)
+		for conn := range c.conns {
+			if err := websocket.Message.Send(conn, string(b)); err != nil {
+				slog.WarnContext(conn.Request().Context(), "send message", "err", "user.id", c.user.ID)
+			}
 		}
 	}
 }
