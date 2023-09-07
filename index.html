@@ -35,9 +35,9 @@
   <script src="https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js"></script>
   <script type="text/javascript">
     function applyTimeago() {
-      const els = document.querySelectorAll('.timeago')
+      // Select only element that has not been processed by timeago yet.
+      const els = document.querySelectorAll('.timeago:not([timeago-id])')
       timeago.render(els, 'en_US', { minInterval: 30 })
-      els.forEach((el) => el.classList.remove('timeago'))
     }
     document.addEventListener('DOMContentLoaded', applyTimeago)
   </script>
@@ -94,7 +94,7 @@
       {{ block "message" . }}
       <li class="overflow-anchor-none">
         <div
-          class="w-fit flex flex-col px-3 py-2 mr-4 text-xs bg-coolgray-700 border-t-1 border-t-coolgray-500 border-t-opacity-50 shadow-sm bg-opacity-50 rounded-md snap-end">
+          class="w-fit flex flex-col px-3 py-2 mr-4 text-xs bg-coolgray-700 border-t-1 border-t-coolgray-500 border-t-opacity-50 shadow-sm bg-opacity-50 rounded-md">
           <div class="font-semibold">{{ .User.Name }} </div>
           <div class="mt-1 flex flex-justify-between gap-2">
             <div class="flex-nowrap font-light break-words">{{ .Content }}</div>
