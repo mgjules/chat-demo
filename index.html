@@ -10,18 +10,59 @@
     integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO"
     crossorigin="anonymous"></script>
   <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
-  <script src="https://unpkg.com/htmx.org/dist/ext/morphdom-swap.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.min.css">
+  <script>
+    // UnoCSS options.
+    window.__unocss = {
+      rules: [
+        ['overflow-anchor-none', { "overflow-anchor": 'none' }],
+        ['overflow-anchor-auto', { "overflow-anchor": 'auto' }],
+      ],
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
+  <script type="text/javascript">
+    // Check if UnoCSS is loaded by watching the removal of the `un-cloak` attribute from the body.
+    // If so, scroll to the last messages.
+    // It's a vanilla alternate to `jQuery.ready`.
+    document.addEventListener('DOMContentLoaded', function () {
+      const observer = new MutationObserver((mutationList) => {
+        mutationList.forEach((mutation) => {
+          switch (mutation.type) {
+            case "attributes":
+              switch (mutation.attributeName) {
+                case "un-cloak":
+                  // Safe to assume that UnoCSS has loaded.
+                  const el = document.querySelector('#messages>li:last-child')
+                  el.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
+                  observer.disconnect()
+              }
+              break;
+          }
+        });
+      });
+      observer.observe(document.body, { attributeFilter: ["un-cloak"], attributeOldValue: true })
+    })
+
+  </script>
   <style>
     [un-cloak] {
       display: none
     }
+
+    /* #messages>li {
+      overflow-anchor: none;
+    }
+
+    #messages>li:last-child {
+      overflow-anchor: auto;
+      height: 1px;
+    } */
   </style>
 </head>
 
 <body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">
-  <div hx-ext="ws,morphdom-swap" ws-connect="/chatroom" class="flex flex-col p-4 container mx-auto max-h-screen">
+  <div hx-ext="ws" ws-connect="/chatroom" class="flex flex-col p-4 container mx-auto max-h-screen">
     <!-- Header -->
     <div class="flex-none flex justify-between items-center flex-wrap gap-4">
       <div>
@@ -38,10 +79,10 @@
     </div>
 
     <!-- Chat messages -->
-    <ul id="messages" class="flex-initial grow mt-4 space-y-2 overflow-y-scroll snap-y transition-all">
+    <ul id="messages" class="flex-initial grow mt-4 space-y-2 overflow-y-scroll transition-all">
       {{- range .Messages -}}
       {{ block "message" . }}
-      <li>
+      <li class="overflow-anchor-none">
         <div
           class="w-fit flex flex-col px-3 py-2 mr-4 text-xs bg-coolgray-700 border-t-1 border-t-coolgray-500 border-t-opacity-50 shadow-sm bg-opacity-50 rounded-md snap-end">
           <div class="font-semibold">{{ .User.Name }} </div>
@@ -53,11 +94,12 @@
       </li>
       {{- end }}
       {{- end }}
+      <li class="overflow-anchor-auto h-0.5"><!-- ANCHOR: DO NOT REMOVE --></li>
     </ul>
 
     <!-- Form -->
     {{ block "form" . -}}
-    <form id="form" hx-swap-oob="morphdom" class="flex-none mt-4" ws-send>
+    <form id="form" hx-swap-oob="true" class="flex-none mt-4" ws-send>
       <input name="chat_message" placeholder="Type here" {{ if .Disabled }}disabled{{ end }}
         class="w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md">
     </form>

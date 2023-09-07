@@ -282,7 +282,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 				logger.ErrorContext(ctx, "compile message template", "err", err)
 				continue
 			}
-			r.broadcast(`<div hx-swap-oob="beforeend:#messages">` + b.String() + `</div>`)
+			r.broadcast(`<div hx-swap-oob="beforebegin:#messages>li:last-child">` + b.String() + `</div>`)
 
 			b.Reset()
 
