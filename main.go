@@ -122,6 +122,7 @@ func login(auth *jwtauth.JWTAuth) http.HandlerFunc {
 			return
 		}
 
+		// Create a fake user and use it as claim to encode a jwt token.
 		_, t, err := auth.Encode(map[string]any{
 			"user": newUser(),
 		})
@@ -163,9 +164,11 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 		defer func() {
 			r.removeClient(user.ID)
 
-			// Update number user online for all users.
+			b.Reset()
+
+			// Update number of user online for all users.
 			if err := t.ExecuteTemplate(&b, "online", map[string]any{
-				"NumUsers": int(r.numUsers()),
+				"NumUsers": r.numUsers(),
 			}); err != nil {
 				logger.ErrorContext(ctx, "compile online template", "err", err)
 				return
@@ -173,9 +176,9 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 			r.broadcast(b.String())
 		}()
 
-		// Update number user online for all users.
+		// Update number of user online for all users.
 		if err := t.ExecuteTemplate(&b, "online", map[string]any{
-			"NumUsers": int(r.numUsers()),
+			"NumUsers": r.numUsers(),
 		}); err != nil {
 			logger.ErrorContext(ctx, "compile online template", "err", err)
 			return
@@ -207,6 +210,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 				continue
 			}
 
+			// Rate limit to prevent abuse.
 			if !limiter.Allow() {
 				// Inform the current user to slow down.
 				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": "why so fast?"}); err != nil {
@@ -220,7 +224,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 
 				b.Reset()
 
-				// Disable the form for 3s.
+				// Disable the form until limiter allows.
 				if err := t.ExecuteTemplate(&b, "form", map[string]any{
 					"Disabled": true,
 				}); err != nil {
@@ -232,11 +236,14 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 					continue
 				}
 
-				<-time.After(3 * time.Second)
+				if err := limiter.Wait(ctx); err != nil {
+                                        logger.ErrorContext(ctx, "limiter wait", "err", err)
+					continue
+				}
 
 				b.Reset()
 
-				// Reeanble the form.
+				// Re-enable the form.
 				if err := t.ExecuteTemplate(&b, "form", map[string]any{
 					"Disabled": false,
 				}); err != nil {
@@ -319,6 +326,9 @@ func protected(next http.Handler) http.Handler {
 			return
 		}
 
+		// Retrieve the user from the claims and add it to the request context.
+		// If the user ID is invalid, we attempt login again.
+                // This could lead to an infinite loop if a user has a newer claim format.
 		u := claims["user"].(map[string]any)
 		id, err := xid.FromString(u["ID"].(string))
 		if err != nil {
