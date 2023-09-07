@@ -157,30 +157,29 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 		// Retrieve user from context.
 		ctx := ws.Request().Context()
 		user := userFromContext(ctx)
-
+		added := r.addClient(user, ws)
 		logger := slog.Default().With("user.id", user.ID)
+		// Remove client from room when user disconnects.
+		defer func() {
+			if r.removeClient(user.ID, ws) {
+				// If user is fully disconnected, remove limiter.
+				l.remove(user)
 
-		// Add user as client to the room and inform others.
-		if r.addClient(user, ws) {
-			// Remove client from room when user disconnects.
-			defer func() {
-				if r.removeClient(user.ID, ws) {
-					l.remove(user)
+				b.Reset()
 
-					b.Reset()
-
-					// Update number of user online for all users.
-					if err := t.ExecuteTemplate(&b, "online", map[string]any{
-						"NumUsers": r.numUsers(),
-					}); err != nil {
-						logger.ErrorContext(ctx, "compile online template", "err", err)
-						return
-					}
-					r.broadcast(b.String())
+				// Update number of user online for all users.
+				if err := t.ExecuteTemplate(&b, "online", map[string]any{
+					"NumUsers": r.numUsers(),
+				}); err != nil {
+					logger.ErrorContext(ctx, "compile online template", "err", err)
+					return
 				}
-			}()
+				r.broadcast(b.String())
+			}
+		}()
 
-			// Update number of user online for all users.
+		// If added, update number of user online for all users.
+		if added {
 			if err := t.ExecuteTemplate(&b, "online", map[string]any{
 				"NumUsers": r.numUsers(),
 			}); err != nil {
