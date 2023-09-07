@@ -184,7 +184,7 @@ func chat(t *template.Template, r *room) func(ws *websocket.Conn) {
 		}
 		r.broadcast(b.String())
 
-		limiter := rate.NewLimiter(rate.Every(2*time.Second), 1)
+		limiter := rate.NewLimiter(rate.Every(5*time.Second), 2)
 
 		for {
 			b.Reset()
