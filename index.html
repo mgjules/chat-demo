@@ -6,12 +6,21 @@
   <meta http-equiv='X-UA-Compatible' content='IE=edge'>
   <title>Chat Demo</title>
   <meta name='viewport' content='width=device-width, initial-scale=1'>
+
+  <!-- HTMX -->
   <script src="https://unpkg.com/htmx.org@1.9.5"
     integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO"
     crossorigin="anonymous"></script>
   <script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+
+  <!-- UnoCSS + Preflight(Reset) -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.min.css">
-  <script>
+  <style>
+    [un-cloak] {
+      display: none
+    }
+  </style>
+  <script type="text/javascript">
     // UnoCSS options.
     window.__unocss = {
       rules: [
@@ -21,6 +30,8 @@
     }
   </script>
   <script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
+
+  <!-- Custom -->
   <script type="text/javascript">
     // Check if UnoCSS is loaded by watching the removal of the `un-cloak` attribute from the body.
     // If so, scroll to the last messages.
@@ -45,11 +56,6 @@
     })
 
   </script>
-  <style>
-    [un-cloak] {
-      display: none
-    }
-  </style>
 </head>
 
 <body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">
@@ -105,6 +111,7 @@
     </div>
     {{- end }}
 
+    <!-- Footer -->
     <div class="flex-none mt-4 text-xs text-center text-coolgray-400">Copyright (c) {{ now | date "2006" }}. All rights
       reserved.
     </div>
