@@ -121,9 +121,25 @@ func (r *room) listMessages() []*message {
 }
 
 func (r *room) broadcast(b string) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
 	for _, c := range r.clients {
 		for conn := range c.conns {
-			if err := websocket.Message.Send(conn, string(b)); err != nil {
+			if err := websocket.Message.Send(conn, b); err != nil {
+				slog.WarnContext(conn.Request().Context(), "send message", "err", "user.id", c.user.ID)
+			}
+		}
+	}
+}
+
+func (r *room) broadcastCustom(fn func(u *user, conn *websocket.Conn) error) {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	for _, c := range r.clients {
+		for conn := range c.conns {
+			if err := fn(c.user, conn); err != nil {
 				slog.WarnContext(conn.Request().Context(), "send message", "err", "user.id", c.user.ID)
 			}
 		}

@@ -156,14 +156,14 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 		var b bytes.Buffer
 		// Retrieve user from context.
 		ctx := ws.Request().Context()
-		user := userFromContext(ctx)
-		added := r.addClient(user, ws)
-		logger := slog.Default().With("user.id", user.ID)
+		u := userFromContext(ctx)
+		added := r.addClient(u, ws)
+		logger := slog.Default().With("user.id", u.ID)
 		// Remove client from room when user disconnects.
 		defer func() {
-			if r.removeClient(user.ID, ws) {
+			if r.removeClient(u.ID, ws) {
 				// If user is fully disconnected, remove limiter.
-				l.remove(user)
+				l.remove(u)
 
 				b.Reset()
 
@@ -189,7 +189,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 			r.broadcast(b.String())
 		}
 
-		limiter := l.add(user, 5*time.Second, 3)
+		limiter := l.add(u, 5*time.Second, 3)
 
 		for {
 			b.Reset()
@@ -208,7 +208,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					continue
 				}
 				if err := websocket.Message.Send(ws, b.String()); err != nil {
-					logger.ErrorContext(ctx, "send error", "err", err)
+					logger.ErrorContext(ctx, "send message", "err", err)
 				}
 
 				continue
@@ -222,7 +222,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					continue
 				}
 				if err := websocket.Message.Send(ws, b.String()); err != nil {
-					logger.ErrorContext(ctx, "send error", "err", err)
+					logger.ErrorContext(ctx, "send message", "err", err)
 					continue
 				}
 
@@ -272,7 +272,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 			}
 
 			// Create and add the message to the room.
-			msg, err := newMessage(user, d.Message)
+			msg, err := newMessage(u, d.Message)
 			if err != nil {
 				// Send back an error if we could not create message.
 				// Could be a validation error.
@@ -281,7 +281,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					continue
 				}
 				if err := websocket.Message.Send(ws, b.String()); err != nil {
-					logger.ErrorContext(ctx, "send error", "err", err)
+					logger.ErrorContext(ctx, "send message", "err", err)
 				}
 
 				continue
@@ -289,11 +289,22 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 			r.addMessage(msg)
 
 			// Broadcast message to all clients including the current user.
-			if err := t.ExecuteTemplate(&b, "message", msg); err != nil {
-				logger.ErrorContext(ctx, "compile message template", "err", err)
-				continue
-			}
-			r.broadcast(`<div hx-swap-oob="beforebegin:#messages>li:last-child">` + b.String() + `</div>`)
+			r.broadcastCustom(func(u *user, conn *websocket.Conn) error {
+				b.Reset()
+
+				// Broadcast message to all clients including the current user.
+				if err := t.ExecuteTemplate(&b, "message", map[string]any{
+					"User":    u,
+					"Message": msg,
+				}); err != nil {
+					return fmt.Errorf("compile message template: %w", err)
+				}
+				if err := websocket.Message.Send(conn, `<div hx-swap-oob="beforebegin:#messages>li:last-child">`+b.String()+`</div>`); err != nil {
+					return fmt.Errorf("send message: %w", err)
+				}
+
+				return nil
+			})
 
 			b.Reset()
 

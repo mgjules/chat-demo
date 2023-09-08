@@ -113,15 +113,19 @@
     <!-- Chat messages -->
     <ul id="messages" class="flex-initial grow mt-4 space-y-2 overflow-y-scroll transition-all"
       hx-on::load="applyTimeago()">
-      {{- range .Messages -}}
-      {{ block "message" . }}
-      <li class="overflow-anchor-none">
+      {{- range .Messages }}
+      {{- block "message" dict "User" $.User "Message" . }}
+      {{- $isCurrentUser := eq .Message.User.ID .User.ID }}
+      <li class="{{ if $isCurrentUser }}flex justify-end {{ end }}overflow-anchor-none">
         <div
           class="w-fit flex flex-col px-3 py-2 mr-4 text-xs bg-coolgray-700 border-t-1 border-t-coolgray-500 border-t-opacity-50 shadow-sm bg-opacity-50 rounded-md">
-          <div class="font-semibold">{{ .User.Name }} </div>
-          <div class="mt-1 flex flex-justify-between gap-2">
-            <div class="flex-nowrap font-light break-words">{{ .Content }}</div>
-            <div class="timeago self-end shrink-0 mt-1 font-light text-coolgray-400" datetime="{{ .Time }}"></div>
+          {{ if not $isCurrentUser }}<div class="font-semibold">{{ .Message.User.Name }}</div>{{ end }}
+          <div class="{{ if not $isCurrentUser }}mt-1 {{ end }}flex flex-justify-between gap-2">
+            <div class="flex-nowrap font-light break-words">{{ .Message.Content }}</div>
+            <div
+              class="timeago self-end shrink-0 mt-1 text-[0.65rem] line-height-[0.80rem] font-light text-coolgray-400"
+              datetime="{{ .Message.Time }}">
+            </div>
           </div>
         </div>
       </li>
@@ -142,9 +146,9 @@
     <!-- Error -->
     {{ block "error" . -}}
     <div id="error" hx-swap-oob="true">
-      {{ if .Error }}
+      {{- if .Error }}
       <div class="flex-none text-red mt-2 text-xs capitalize">{{ .Error }}</div>
-      {{ end }}
+      {{- end }}
     </div>
     {{- end }}
 
