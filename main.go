@@ -165,9 +165,8 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				// If user is fully disconnected, remove limiter.
 				l.remove(u)
 
-				b.Reset()
-
 				// Update number of user online for all users.
+				b.Reset()
 				if err := t.ExecuteTemplate(&b, "online", map[string]any{
 					"NumUsers": r.numUsers(),
 				}); err != nil {
@@ -191,9 +190,8 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 
 		limiter := l.add(u, 5*time.Second, 3)
 
+		// Receiving and processing client requests.
 		for {
-			b.Reset()
-
 			var d data
 			if err := websocket.JSON.Receive(ws, &d); err != nil {
 				if errors.Is(err, io.EOF) {
@@ -203,6 +201,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				logger.ErrorContext(ctx, "receive message", "err", err)
 
 				// Inform user something went wrong.
+				b.Reset()
 				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": "could not read your message"}); err != nil {
 					logger.ErrorContext(ctx, "compile error template", "err", err)
 					continue
@@ -226,9 +225,8 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					continue
 				}
 
-				b.Reset()
-
 				// Disable the form until limiter allows.
+				b.Reset()
 				if err := t.ExecuteTemplate(&b, "form", map[string]any{
 					"Disabled": true,
 				}); err != nil {
@@ -245,9 +243,8 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					continue
 				}
 
-				b.Reset()
-
 				// Re-enable the form.
+				b.Reset()
 				if err := t.ExecuteTemplate(&b, "form", map[string]any{
 					"Disabled": false,
 				}); err != nil {
@@ -260,6 +257,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				}
 
 				// Clear the error for the current user.
+				b.Reset()
 				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": ""}); err != nil {
 					logger.ErrorContext(ctx, "compile error template", "err", err)
 					continue
@@ -276,6 +274,7 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 			if err != nil {
 				// Send back an error if we could not create message.
 				// Could be a validation error.
+				b.Reset()
 				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": err.Error()}); err != nil {
 					logger.ErrorContext(ctx, "compile error template", "err", err)
 					continue
@@ -290,9 +289,8 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 
 			// Broadcast message to all clients including the current user.
 			r.broadcastCustom(func(u *user, conn *websocket.Conn) error {
-				b.Reset()
-
 				// Broadcast message to all clients including the current user.
+				b.Reset()
 				if err := t.ExecuteTemplate(&b, "message", map[string]any{
 					"User":    u,
 					"Message": msg,
@@ -306,9 +304,8 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				return nil
 			})
 
-			b.Reset()
-
 			// Reset the form for the current user.
+			b.Reset()
 			if err := t.ExecuteTemplate(&b, "form", map[string]any{
 				"Disabled": false,
 			}); err != nil {
@@ -319,9 +316,8 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				logger.ErrorContext(ctx, "send form", "err", err)
 			}
 
-			b.Reset()
-
 			// Clear the error for the current user.
+			b.Reset()
 			if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": ""}); err != nil {
 				logger.ErrorContext(ctx, "compile error template", "err", err)
 				continue
