@@ -131,14 +131,17 @@ func login(auth *jwtauth.JWTAuth) http.HandlerFunc {
 
 func index(t *pongo2.Template, room *room) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		user := userFromContext(r.Context())
+
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		if err := t.ExecuteWriter(pongo2.Context{
-			"user":      userFromContext(r.Context()),
+			"user":      user,
 			"messages":  room.listMessages(),
 			"num_users": room.numUsers(),
 			"disabled":  false,
 		}, w); err != nil {
-			w.Write([]byte("Failed to render index template: " + err.Error()))
+			slog.ErrorContext(r.Context(), "render index template", "err", err, "user.id", user.ID)
+			w.Write([]byte("failed to render index template"))
 		}
 	}
 }
@@ -195,7 +198,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					"num_users": r.numUsers(),
 				}, []string{"online"})
 				if err != nil {
-					logger.ErrorContext(ctx, "compile online template", "err", err)
+					logger.ErrorContext(ctx, "render online template", "err", err)
 					return
 				}
 				r.broadcast(res["online"])
@@ -208,7 +211,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				"num_users": r.numUsers(),
 			}, []string{"online"})
 			if err != nil {
-				logger.ErrorContext(ctx, "compile online template", "err", err)
+				logger.ErrorContext(ctx, "render online template", "err", err)
 				return
 			}
 			r.broadcast(res["online"])
@@ -231,7 +234,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					"error": "could not read your message",
 				}, []string{"error"})
 				if err != nil {
-					logger.ErrorContext(ctx, "compile error template", "err", err)
+					logger.ErrorContext(ctx, "render error template", "err", err)
 					break
 				}
 				if err := websocket.Message.Send(ws, res["error"]); err != nil {
@@ -250,7 +253,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					"disabled": true,
 				}, []string{"error", "form"})
 				if err != nil {
-					logger.ErrorContext(ctx, "compile error and form templates", "err", err)
+					logger.ErrorContext(ctx, "render error and form templates", "err", err)
 					break
 				}
 				if err := websocket.Message.Send(ws, res["error"]+res["form"]); err != nil {
@@ -269,7 +272,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					"disabled": false,
 				}, []string{"error", "form"})
 				if err != nil {
-					logger.ErrorContext(ctx, "compile error and form templates", "err", err)
+					logger.ErrorContext(ctx, "render error and form templates", "err", err)
 					break
 				}
 				if err := websocket.Message.Send(ws, res["error"]+res["form"]); err != nil {
@@ -288,7 +291,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					"error": err.Error(),
 				}, []string{"error"})
 				if err != nil {
-					logger.ErrorContext(ctx, "compile error template", "err", err)
+					logger.ErrorContext(ctx, "render error template", "err", err)
 					break
 				}
 				if err := websocket.Message.Send(ws, res["error"]); err != nil {
@@ -307,7 +310,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 					"msg":  msg,
 				}, []string{"message"})
 				if err != nil {
-					return fmt.Errorf("compile message template: %w", err)
+					return fmt.Errorf("render message template: %w", err)
 				}
 				if err := websocket.Message.Send(
 					conn,
@@ -325,7 +328,7 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				"disabled": false,
 			}, []string{"error", "form"})
 			if err != nil {
-				logger.ErrorContext(ctx, "compile error and form templates", "err", err)
+				logger.ErrorContext(ctx, "render error and form templates", "err", err)
 				break
 			}
 			if err := websocket.Message.Send(ws, res["error"]+res["form"]); err != nil {
