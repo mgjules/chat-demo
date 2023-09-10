@@ -129,23 +129,6 @@ func login(auth *jwtauth.JWTAuth) http.HandlerFunc {
 	}
 }
 
-func index(t *pongo2.Template, room *room) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		user := userFromContext(r.Context())
-
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := t.ExecuteWriter(pongo2.Context{
-			"user":      user,
-			"messages":  room.listMessages(),
-			"num_users": room.numUsers(),
-			"disabled":  false,
-		}, w); err != nil {
-			slog.ErrorContext(r.Context(), "render index template", "err", err, "user.id", user.ID)
-			w.Write([]byte("failed to render index template"))
-		}
-	}
-}
-
 func protected(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		token, claims, err := jwtauth.FromContext(r.Context())
@@ -171,6 +154,23 @@ func protected(next http.Handler) http.Handler {
 
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+func index(t *pongo2.Template, room *room) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		user := userFromContext(r.Context())
+
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := t.ExecuteWriter(pongo2.Context{
+			"user":      user,
+			"messages":  room.listMessages(),
+			"num_users": room.numUsers(),
+			"disabled":  false,
+		}, w); err != nil {
+			slog.ErrorContext(r.Context(), "render index template", "err", err, "user.id", user.ID)
+			w.Write([]byte("failed to render index template"))
+		}
+	}
 }
 
 type data struct {
