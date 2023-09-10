@@ -102,12 +102,14 @@ func run() error {
 func index(t *pongo2.Template, room *room) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		t.ExecuteWriter(pongo2.Context{
+		if err := t.ExecuteWriter(pongo2.Context{
 			"user":      userFromContext(r.Context()),
 			"messages":  room.listMessages(),
 			"num_users": room.numUsers(),
 			"disabled":  false,
-		}, w)
+		}, w); err != nil {
+			w.Write([]byte("Failed to render index template: " + err.Error()))
+		}
 	}
 }
 
@@ -280,7 +282,10 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				if err != nil {
 					return fmt.Errorf("compile message template: %w", err)
 				}
-				if err := websocket.Message.Send(conn, `<div hx-swap-oob="beforebegin:#messages>li:last-child">`+res["message"]+`</div>`); err != nil {
+				if err := websocket.Message.Send(
+					conn,
+					`<div hx-swap-oob="beforebegin:#messages>li:last-child">`+res["message"]+`</div>`,
+				); err != nil {
 					return fmt.Errorf("send message: %w", err)
 				}
 
