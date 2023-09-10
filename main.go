@@ -180,6 +180,7 @@ type data struct {
 
 func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
+		ws.MaxPayloadBytes = 2 << 10 // 2KB
 		defer ws.Close()
 
 		// Retrieve user from context.
