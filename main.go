@@ -99,20 +99,6 @@ func run() error {
 	return server.ListenAndServe()
 }
 
-func index(t *pongo2.Template, room *room) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		if err := t.ExecuteWriter(pongo2.Context{
-			"user":      userFromContext(r.Context()),
-			"messages":  room.listMessages(),
-			"num_users": room.numUsers(),
-			"disabled":  false,
-		}, w); err != nil {
-			w.Write([]byte("Failed to render index template: " + err.Error()))
-		}
-	}
-}
-
 func login(auth *jwtauth.JWTAuth) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		token, _, err := jwtauth.FromContext(r.Context())
@@ -141,6 +127,47 @@ func login(auth *jwtauth.JWTAuth) http.HandlerFunc {
 
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
+}
+
+func index(t *pongo2.Template, room *room) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		if err := t.ExecuteWriter(pongo2.Context{
+			"user":      userFromContext(r.Context()),
+			"messages":  room.listMessages(),
+			"num_users": room.numUsers(),
+			"disabled":  false,
+		}, w); err != nil {
+			w.Write([]byte("Failed to render index template: " + err.Error()))
+		}
+	}
+}
+
+func protected(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		token, claims, err := jwtauth.FromContext(r.Context())
+		if err != nil || token == nil || jwt.Validate(token) != nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		// Retrieve the user from the claims and add it to the request context.
+		// If the user ID is invalid, we attempt login again.
+		// This could lead to an infinite loop if a user has a newer claim format.
+		u := claims["user"].(map[string]any)
+		id, err := xid.FromString(u["ID"].(string))
+		if err != nil {
+			http.Redirect(w, r, "/login", http.StatusFound)
+			return
+		}
+
+		ctx := addUserToContext(r.Context(), &user{
+			ID:   id,
+			Name: u["Name"].(string),
+		})
+
+		next.ServeHTTP(w, r.WithContext(ctx))
+	})
 }
 
 type data struct {
@@ -306,31 +333,4 @@ func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 			}
 		}
 	}
-}
-
-func protected(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		token, claims, err := jwtauth.FromContext(r.Context())
-		if err != nil || token == nil || jwt.Validate(token) != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		// Retrieve the user from the claims and add it to the request context.
-		// If the user ID is invalid, we attempt login again.
-		// This could lead to an infinite loop if a user has a newer claim format.
-		u := claims["user"].(map[string]any)
-		id, err := xid.FromString(u["ID"].(string))
-		if err != nil {
-			http.Redirect(w, r, "/login", http.StatusFound)
-			return
-		}
-
-		ctx := addUserToContext(r.Context(), &user{
-			ID:   id,
-			Name: u["Name"].(string),
-		})
-
-		next.ServeHTTP(w, r.WithContext(ctx))
-	})
 }
