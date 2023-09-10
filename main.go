@@ -22,7 +22,7 @@ import (
 	"golang.org/x/net/websocket"
 )
 
-//go:embed *.dhtml
+//go:embed *.html
 var tpls embed.FS
 
 func main() {
@@ -62,9 +62,9 @@ func run() error {
 	r.Use(jwtauth.Verifier(jwt))
 
 	ts := pongo2.NewSet("tpls", pongo2.NewFSLoader(tpls))
-	t, err := ts.FromFile("index.dhtml")
+	t, err := ts.FromFile("index.html")
 	if err != nil {
-		return fmt.Errorf("failed to load index.dhtml template: %w", err)
+		return fmt.Errorf("failed to load index.html template: %w", err)
 	}
 
 	room := newRoom()

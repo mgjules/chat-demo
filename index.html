@@ -78,8 +78,12 @@
                 case "un-cloak":
                   // Safe to assume that UnoCSS has loaded.
                   // Scroll to last message.
-                  const el = document.querySelector('#messages>li:last-child')
-                  el.scrollIntoView({ behavior: "smooth", block: "end", inline: "nearest" })
+                  document.querySelector('#messages>li:last-child').scrollIntoView({
+                    behavior: "smooth",
+                    block: "end",
+                    inline: "nearest"
+                  })
+                  // no need to keep observing since it's a one-off operation.
                   observer.disconnect()
               }
               break
@@ -136,10 +140,9 @@
 
     <!-- Form -->
     {% block form  %}
-    <form id="form" hx-swap-oob="true" class="flex-none mt-4" ws-send
-      hx-on::load="this.querySelector('input[name=chat_message]').focus()">
+    <form id="form" hx-swap-oob="true" class="flex-none mt-4" ws-send>
       <input name="chat_message" type="text" placeholder="Type here" {% if disabled %}disabled {% endif %}maxlength="256"
-        required
+        required autofocus
         class="w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md">
     </form>
     {% endblock %}
