@@ -1,17 +1,15 @@
 package main
 
 import (
-	"bytes"
 	"embed"
 	"errors"
 	"fmt"
-	"html/template"
 	"io"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/Masterminds/sprig/v3"
+	"github.com/flosch/pongo2/v6"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
@@ -63,9 +61,10 @@ func run() error {
 	r.Use(middleware.Heartbeat("/ping"))
 	r.Use(jwtauth.Verifier(jwt))
 
-	t, err := template.New("tpls").Funcs(sprig.FuncMap()).ParseFS(tpls, "*.html")
+	ts := pongo2.NewSet("tpls", pongo2.NewFSLoader(tpls))
+	t, err := ts.FromFile("index.html")
 	if err != nil {
-		return fmt.Errorf("parse template fs: %w", err)
+		return fmt.Errorf("failed to load index.html template: %w", err)
 	}
 
 	room := newRoom()
@@ -100,17 +99,15 @@ func run() error {
 	return server.ListenAndServe()
 }
 
-func index(t *template.Template, room *room) http.HandlerFunc {
+func index(t *pongo2.Template, room *room) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		user := userFromContext(r.Context())
-
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		t.ExecuteTemplate(w, "index.html", map[string]any{
-			"User":     user,
-			"Messages": room.listMessages(),
-			"NumUsers": room.numUsers(),
-			"Disabled": false,
-		})
+		t.ExecuteWriter(pongo2.Context{
+			"user":      userFromContext(r.Context()),
+			"messages":  room.listMessages(),
+			"num_users": room.numUsers(),
+			"disabled":  false,
+		}, w)
 	}
 }
 
@@ -149,11 +146,10 @@ type data struct {
 	Headers map[string]string `json:"HEADERS"`
 }
 
-func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
+func chat(t *pongo2.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		defer ws.Close()
 
-		var b bytes.Buffer
 		// Retrieve user from context.
 		ctx := ws.Request().Context()
 		u := userFromContext(ctx)
@@ -166,26 +162,27 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				l.remove(u)
 
 				// Update number of user online for all users.
-				b.Reset()
-				if err := t.ExecuteTemplate(&b, "online", map[string]any{
-					"NumUsers": r.numUsers(),
-				}); err != nil {
+				res, err := t.ExecuteBlocks(pongo2.Context{
+					"num_users": r.numUsers(),
+				}, []string{"online"})
+				if err != nil {
 					logger.ErrorContext(ctx, "compile online template", "err", err)
 					return
 				}
-				r.broadcast(b.String())
+				r.broadcast(res["online"])
 			}
 		}()
 
 		// If added, update number of user online for all users.
 		if added {
-			if err := t.ExecuteTemplate(&b, "online", map[string]any{
-				"NumUsers": r.numUsers(),
-			}); err != nil {
+			res, err := t.ExecuteBlocks(pongo2.Context{
+				"num_users": r.numUsers(),
+			}, []string{"online"})
+			if err != nil {
 				logger.ErrorContext(ctx, "compile online template", "err", err)
 				return
 			}
-			r.broadcast(b.String())
+			r.broadcast(res["online"])
 		}
 
 		limiter := l.add(u, 5*time.Second, 3)
@@ -201,12 +198,14 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				logger.ErrorContext(ctx, "receive message", "err", err)
 
 				// Inform user something went wrong.
-				b.Reset()
-				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": "could not read your message"}); err != nil {
+				res, err := t.ExecuteBlocks(pongo2.Context{
+					"error": "could not read your message",
+				}, []string{"error"})
+				if err != nil {
 					logger.ErrorContext(ctx, "compile error template", "err", err)
-					continue
+					break
 				}
-				if err := websocket.Message.Send(ws, b.String()); err != nil {
+				if err := websocket.Message.Send(ws, res["error"]); err != nil {
 					logger.ErrorContext(ctx, "send message", "err", err)
 				}
 
@@ -215,27 +214,18 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 
 			// Rate limit to prevent abuse.
 			if !limiter.Allow() {
-				// Inform the current user to slow down.
-				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": "why so fast?"}); err != nil {
-					logger.ErrorContext(ctx, "compile error template", "err", err)
-					continue
+				// Inform the current user to slow down and
+				// disable the form until limiter allows.
+				res, err := t.ExecuteBlocks(pongo2.Context{
+					"error":    "why so fast?",
+					"disabled": true,
+				}, []string{"error", "form"})
+				if err != nil {
+					logger.ErrorContext(ctx, "compile error and form templates", "err", err)
+					break
 				}
-				if err := websocket.Message.Send(ws, b.String()); err != nil {
+				if err := websocket.Message.Send(ws, res["error"]+res["form"]); err != nil {
 					logger.ErrorContext(ctx, "send message", "err", err)
-					continue
-				}
-
-				// Disable the form until limiter allows.
-				b.Reset()
-				if err := t.ExecuteTemplate(&b, "form", map[string]any{
-					"Disabled": true,
-				}); err != nil {
-					logger.ErrorContext(ctx, "compile form template", "err", err)
-					continue
-				}
-				if err := websocket.Message.Send(ws, b.String()); err != nil {
-					logger.ErrorContext(ctx, "send form", "err", err)
-					continue
 				}
 
 				if err := limiter.Wait(ctx); err != nil {
@@ -244,26 +234,17 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 				}
 
 				// Re-enable the form.
-				b.Reset()
-				if err := t.ExecuteTemplate(&b, "form", map[string]any{
-					"Disabled": false,
-				}); err != nil {
-					logger.ErrorContext(ctx, "compile form template", "err", err)
-					continue
-				}
-				if err := websocket.Message.Send(ws, b.String()); err != nil {
-					logger.ErrorContext(ctx, "send form", "err", err)
-					continue
-				}
-
 				// Clear the error for the current user.
-				b.Reset()
-				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": ""}); err != nil {
-					logger.ErrorContext(ctx, "compile error template", "err", err)
-					continue
+				res, err = t.ExecuteBlocks(pongo2.Context{
+					"error":    "",
+					"disabled": false,
+				}, []string{"error", "form"})
+				if err != nil {
+					logger.ErrorContext(ctx, "compile error and form templates", "err", err)
+					break
 				}
-				if err := websocket.Message.Send(ws, b.String()); err != nil {
-					logger.ErrorContext(ctx, "send form", "err", err)
+				if err := websocket.Message.Send(ws, res["error"]+res["form"]); err != nil {
+					logger.ErrorContext(ctx, "send message", "err", err)
 				}
 
 				continue
@@ -274,12 +255,14 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 			if err != nil {
 				// Send back an error if we could not create message.
 				// Could be a validation error.
-				b.Reset()
-				if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": err.Error()}); err != nil {
+				res, err := t.ExecuteBlocks(pongo2.Context{
+					"error": err.Error(),
+				}, []string{"error"})
+				if err != nil {
 					logger.ErrorContext(ctx, "compile error template", "err", err)
-					continue
+					break
 				}
-				if err := websocket.Message.Send(ws, b.String()); err != nil {
+				if err := websocket.Message.Send(ws, res["error"]); err != nil {
 					logger.ErrorContext(ctx, "send message", "err", err)
 				}
 
@@ -290,40 +273,31 @@ func chat(t *template.Template, r *room, l *limiters) func(ws *websocket.Conn) {
 			// Broadcast message to all clients including the current user.
 			r.broadcastCustom(func(u *user, conn *websocket.Conn) error {
 				// Broadcast message to all clients including the current user.
-				b.Reset()
-				if err := t.ExecuteTemplate(&b, "message", map[string]any{
-					"User":    u,
-					"Message": msg,
-				}); err != nil {
+				res, err := t.ExecuteBlocks(pongo2.Context{
+					"user": u,
+					"msg":  msg,
+				}, []string{"message"})
+				if err != nil {
 					return fmt.Errorf("compile message template: %w", err)
 				}
-				if err := websocket.Message.Send(conn, `<div hx-swap-oob="beforebegin:#messages>li:last-child">`+b.String()+`</div>`); err != nil {
+				if err := websocket.Message.Send(conn, `<div hx-swap-oob="beforebegin:#messages>li:last-child">`+res["message"]+`</div>`); err != nil {
 					return fmt.Errorf("send message: %w", err)
 				}
 
 				return nil
 			})
 
-			// Reset the form for the current user.
-			b.Reset()
-			if err := t.ExecuteTemplate(&b, "form", map[string]any{
-				"Disabled": false,
-			}); err != nil {
-				logger.ErrorContext(ctx, "compile form template", "err", err)
-				continue
+			// Reset the form and clear the error for the current user.
+			res, err := t.ExecuteBlocks(pongo2.Context{
+				"error":    "",
+				"disabled": false,
+			}, []string{"error", "form"})
+			if err != nil {
+				logger.ErrorContext(ctx, "compile error and form templates", "err", err)
+				break
 			}
-			if err := websocket.Message.Send(ws, b.String()); err != nil {
-				logger.ErrorContext(ctx, "send form", "err", err)
-			}
-
-			// Clear the error for the current user.
-			b.Reset()
-			if err := t.ExecuteTemplate(&b, "error", map[string]any{"Error": ""}); err != nil {
-				logger.ErrorContext(ctx, "compile error template", "err", err)
-				continue
-			}
-			if err := websocket.Message.Send(ws, b.String()); err != nil {
-				logger.ErrorContext(ctx, "send form", "err", err)
+			if err := websocket.Message.Send(ws, res["error"]+res["form"]); err != nil {
+				logger.ErrorContext(ctx, "send message", "err", err)
 			}
 		}
 	}
