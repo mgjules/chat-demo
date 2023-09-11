@@ -90,7 +90,7 @@ func run() error {
 	r.Get("/login", login(jwt))
 
 	server := &http.Server{
-		Addr:         "localhost:" + port,
+		Addr:         ":" + port,
 		Handler:      r,
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 10 * time.Second,
