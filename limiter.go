@@ -8,7 +8,7 @@ import (
 )
 
 type limiters struct {
-	mu       sync.Mutex
+	mu       sync.RWMutex
 	limiters map[string]*rate.Limiter
 }
 
@@ -19,14 +19,17 @@ func newLimiters() *limiters {
 }
 
 func (l *limiters) add(u *user, d time.Duration, b int) *rate.Limiter {
-	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if limiter, found := l.limiters[u.ID.String()]; found {
+	l.mu.RLock()
+	limiter, found := l.limiters[u.ID.String()]
+	l.mu.RUnlock()
+	if found {
 		return limiter
 	}
-	limiter := rate.NewLimiter(rate.Every(d), b)
+
+	limiter = rate.NewLimiter(rate.Every(d), b)
+	l.mu.Lock()
 	l.limiters[u.ID.String()] = limiter
+	l.mu.Unlock()
 
 	return limiter
 }
