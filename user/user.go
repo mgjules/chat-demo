@@ -1,4 +1,4 @@
-package main
+package user
 
 import (
 	"context"
@@ -13,19 +13,19 @@ type userContextKey string
 
 const userCtxKey userContextKey = "user"
 
-// user holds information about a user.
-type user struct {
+// User holds information about a user.
+type User struct {
 	ID   xid.ID
 	Name string
 }
 
-// newUser creates a new user.
-func newUser() *user {
+// New creates a new User.
+func New() *User {
 	id := xid.New()
 	// Prevents faker from tracking duplicates since it does that in a non-threadsafe manner.
 	// Instead we seed the Name with sections of the ID.
 	nonunique := options.WithGenerateUniqueValues(false)
-	return &user{
+	return &User{
 		ID: id,
 		Name: fmt.Sprintf("%s %s (%s%s)",
 			faker.FirstName(nonunique), faker.LastName(nonunique), id.String()[4:8], id.String()[15:],
@@ -33,12 +33,14 @@ func newUser() *user {
 	}
 }
 
-func addUserToContext(ctx context.Context, user *user) context.Context {
+// AddToContext adds a user to the context.
+func AddToContext(ctx context.Context, user *User) context.Context {
 	return context.WithValue(ctx, userCtxKey, user)
 }
 
-func userFromContext(ctx context.Context) *user {
-	u, ok := ctx.Value(userCtxKey).(*user)
+// FromContext retrieves a user from the context.
+func FromContext(ctx context.Context) *User {
+	u, ok := ctx.Value(userCtxKey).(*User)
 	if !ok {
 		return nil
 	}

@@ -1,0 +1,37 @@
+package templates
+
+import (
+	"github.com/mgjules/chat-demo/chat"
+	"github.com/mgjules/chat-demo/user"
+)
+
+templ Page(user *user.User, room *chat.Room, disabled bool, cErr string) {
+	<!DOCTYPE html>
+	<html>
+		<head>
+			<meta charset="utf-8"/>
+			<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
+			<title>Chat Demo</title>
+			<meta name="viewport" content="width=device-width, initial-scale=1"/>
+			<script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
+			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.min.css"/>
+			<style>
+				[un-cloak] {
+					display: none
+				}
+			</style>
+			<script type="text/javascript">
+				// UnoCSS options.
+				window.__unocss = {
+					rules: [
+						['overflow-anchor-none', { "overflow-anchor": 'none' }],
+						['overflow-anchor-auto', { "overflow-anchor": 'auto' }],
+					],
+				}
+			</script>
+			<script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
+		</head>
+		<body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">@Chat(user, room, disabled, cErr)</body>
+	</html>
+}
+

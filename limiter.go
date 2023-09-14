@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/mgjules/chat-demo/user"
 	"golang.org/x/time/rate"
 )
 
@@ -18,7 +19,7 @@ func newLimiters() *limiters {
 	}
 }
 
-func (l *limiters) add(u *user, d time.Duration, b int) *rate.Limiter {
+func (l *limiters) add(u *user.User, d time.Duration, b int) *rate.Limiter {
 	l.mu.RLock()
 	limiter, found := l.limiters[u.ID.String()]
 	l.mu.RUnlock()
@@ -34,7 +35,7 @@ func (l *limiters) add(u *user, d time.Duration, b int) *rate.Limiter {
 	return limiter
 }
 
-func (l *limiters) remove(u *user) {
+func (l *limiters) remove(u *user.User) {
 	l.mu.Lock()
 	delete(l.limiters, u.ID.String())
 	l.mu.Unlock()

@@ -1,0 +1,138 @@
+package templates
+
+import (
+  "strconv"
+	"time"
+
+	"github.com/mgjules/chat-demo/chat"
+	"github.com/mgjules/chat-demo/user"
+)
+
+templ ChatHeaderNumUsers(numUsers uint64) {
+	<div id="online" class="text-xs text-coolgray-400" hx-swap-oob="true">
+		{ strconv.Itoa(int(numUsers)) }
+		user
+		if numUsers > 1 {
+			s
+		}
+	</div>
+}
+
+templ ChatHeader(numUsers uint64, userName string) {
+	<div class="flex-none flex justify-between items-center flex-wrap gap-4">
+		<div>
+			<div class="uppercase"><span class="font-extralight">Chatroom</span>Demo</div>
+			@ChatHeaderNumUsers(numUsers)
+		</div>
+		<div class="text-lightblue-200 text-sm">{ userName }</div>
+	</div>
+}
+
+templ ChatMessageWrapped(user *user.User, message *chat.Message) {
+	<div hx-swap-oob="beforebegin:#messages>li:last-child">
+		@ChatMessage(user, message)
+	</div>
+}
+
+templ ChatMessage(user *user.User, message *chat.Message) {
+	<li class={ templ.KV("flex justify-end", user.ID == message.User.ID), "overflow-anchor-none" }>
+		<div class="w-fit flex flex-col px-3 py-2 mr-4 text-xs bg-coolgray-700 border-t-1 border-t-coolgray-500 border-t-opacity-50 shadow-sm bg-opacity-50 rounded-md">
+			if user.ID != message.User.ID {
+				<div class="font-semibold">{ message.User.Name }</div>
+			}
+			<div class={ templ.KV("mt-1", user.ID != message.User.ID), "flex flex-justify-between gap-2" }>
+				<div class="flex-nowrap font-light break-words">{ message.Content }</div>
+				<div class="timeago self-end shrink-0 mt-1 text-[0.65rem] line-height-[0.80rem] font-light text-coolgray-400" datetime={ message.Time.String() }></div>
+			</div>
+		</div>
+	</li>
+}
+
+templ ChatMessages(user *user.User, messages []*chat.Message) {
+	<ul id="messages" class="flex-initial grow mt-4 space-y-2 overflow-y-scroll transition-all" hx-on::load="applyTimeago()">
+		for _, msg := range messages {
+			@ChatMessage(user, msg)
+		}
+		<li class="overflow-anchor-auto h-0.5"></li>
+	</ul>
+}
+
+templ ChatForm(disabled bool) {
+	<form id="form" hx-swap-oob="true" class="flex-none mt-4" ws-send hx-on::load="this.querySelector(&#39;input[name=chat_message]&#39;).focus()"><input name="chat_message" type="text" placeholder="Type here" disabled?={ disabled } maxlength="256" required class="w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md"/></form>
+}
+
+templ ChatError(cErr string) {
+	<div id="error" hx-swap-oob="true">
+		if cErr != "" {
+			<div class="flex-none text-red mt-2 text-xs capitalize">{ cErr }</div>
+		}
+	</div>
+}
+
+templ ChatFooter() {
+	<div class="flex-none mt-4 text-xs text-center text-coolgray-400">Copyright (c) { time.Now().Format("2006") }. All rights reserved.</div>
+}
+
+templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
+	<script src="https://unpkg.com/htmx.org/dist/ext/ws.js"></script>
+	<script src="https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js"></script>
+	<script type="text/javascript">
+		function applyTimeago() {
+			// Select only element that has not been processed by timeago yet.
+			const els = document.querySelectorAll('.timeago:not([timeago-id])')
+			timeago.render(els, 'mini-locale', { minInterval: 10 })
+		}
+
+		window.onload = () => {
+			// The defaults locales are too verbose.
+			timeago.register('mini-locale', (number, index, totalSec) => {
+				return [
+					['now', 'soon'],
+					['%ss', 'in %ss'],
+					['1m', 'in 1m'],
+					['%sm', 'in %sm'],
+					['1h', 'in 1h'],
+					['%sh', 'in %sh'],
+					['1d', 'in 1d'],
+					['%sd', 'in %sd'],
+					['1w', 'in 1w'],
+					['%sw', 'in %sw'],
+					['1mo', 'in 1mo'],
+					['%smo', 'in %smo'],
+					['1yr', 'in 1yr'],
+					['%syr', 'in %syr']
+				][index]
+			})
+			applyTimeago()
+
+			// Check if UnoCSS is loaded by watching the removal of the `un-cloak` attribute from the body.
+			// It's a vanilla alternative to `jQuery.ready`.
+			const observer = new MutationObserver((mutationList) => {
+				mutationList.forEach((mutation) => {
+					switch (mutation.type) {
+						case "attributes":
+							switch (mutation.attributeName) {
+								case "un-cloak":
+									// Safe to assume that UnoCSS has loaded.
+									// Scroll to last message and focus the form input.
+									document.querySelector('#messages>li:last-child').scrollIntoView({
+										behavior: "smooth",
+										block: "end",
+										inline: "nearest"
+									})
+									document.querySelector('#form>input[name=chat_message]').focus()
+									// no need to keep observing since it's a one-off operation.
+									observer.disconnect()
+							}
+							break
+					}
+				})
+			})
+			observer.observe(document.body, {
+				attributeFilter: ["un-cloak"]
+			})
+		}
+	</script>
+	<div hx-ext="ws" ws-connect="/chatroom" class="flex flex-col p-4 container mx-auto max-h-screen">@ChatHeader(room.NumUsers(), user.Name)@ChatMessages(user, room.Messages())@ChatForm(disabled)@ChatError(cErr)@ChatFooter()</div>
+}
+
