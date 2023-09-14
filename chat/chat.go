@@ -54,9 +54,11 @@ type Client struct {
 
 // Room holds the state of a single chat room.
 type Room struct {
-	mu       sync.RWMutex
-	clients  map[string]*Client
-	messages *ring.Ring
+	muClients sync.RWMutex
+	clients   map[string]*Client
+
+	muMessages sync.RWMutex
+	messages   *ring.Ring
 }
 
 // NewRoom creates a new Room.
@@ -71,8 +73,8 @@ func NewRoom() *Room {
 // If the user does not already have a connection, thus no client
 // it will be created and the method will return true.
 func (r *Room) AddClient(u *user.User, ws *websocket.Conn) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.muClients.Lock()
+	defer r.muClients.Unlock()
 	id := u.ID.String()
 	var added bool
 	if _, found := r.clients[id]; !found {
@@ -91,8 +93,8 @@ func (r *Room) AddClient(u *user.User, ws *websocket.Conn) bool {
 // If the user does not have any websocket connection, its client will be removed
 // and the method will return true.
 func (r *Room) RemoveClient(id xid.ID, ws *websocket.Conn) bool {
-	r.mu.Lock()
-	defer r.mu.Unlock()
+	r.muClients.Lock()
+	defer r.muClients.Unlock()
 	_, found := r.clients[id.String()]
 	if !found {
 		return false
@@ -109,24 +111,24 @@ func (r *Room) RemoveClient(id xid.ID, ws *websocket.Conn) bool {
 
 // NumUsers return the current number of users as clients.
 func (r *Room) NumUsers() uint64 {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.muClients.RLock()
+	defer r.muClients.RUnlock()
 
 	return uint64(len(r.clients))
 }
 
 // AddMessage adds a new chat message.
 func (r *Room) AddMessage(m *Message) {
-	r.mu.Lock()
+	r.muMessages.Lock()
 	r.messages.Value = m
 	r.messages = r.messages.Next()
-	r.mu.Unlock()
+	r.muMessages.Unlock()
 }
 
 // Messages returns the list of messages.
 func (r *Room) Messages() []*Message {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.muMessages.RLock()
+	defer r.muMessages.RUnlock()
 
 	messages := make([]*Message, 0)
 	r.messages.Do(func(m any) {
@@ -138,8 +140,8 @@ func (r *Room) Messages() []*Message {
 
 // Write implements the io.Writer interface.
 func (r *Room) Write(p []byte) (int, error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.muClients.RLock()
+	defer r.muClients.RUnlock()
 
 	writers := make([]io.Writer, 0)
 	for _, c := range r.clients {
@@ -154,8 +156,8 @@ func (r *Room) Write(p []byte) (int, error) {
 // IterateClients executes a function fn
 // (e.g. a custom send mechanism or personalized messages per client) for all the clients.
 func (r *Room) IterateClients(fn func(u *user.User, conn *websocket.Conn) error) {
-	r.mu.RLock()
-	defer r.mu.RUnlock()
+	r.muClients.RLock()
+	defer r.muClients.RUnlock()
 
 	for _, c := range r.clients {
 		for conn := range c.conns {
