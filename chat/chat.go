@@ -3,6 +3,7 @@ package chat
 import (
 	"container/ring"
 	"errors"
+	"fmt"
 	"strings"
 	"sync"
 	"time"
@@ -144,27 +145,13 @@ func (r *Room) Write(p []byte) (int, error) {
 	r.muClients.RLock()
 	defer r.muClients.RUnlock()
 
-	var wg sync.WaitGroup
-	for _, c := range r.clients {
-		if err := r.sem.Acquire(c.conn.Request().Context(), 1); err != nil {
-			slog.WarnContext(c.conn.Request().Context(), "acquire lock", "err", err, "user.id", c.user.ID)
-			continue
+	r.IterateClients(func(u *user.User, conn *websocket.Conn) error {
+		if _, err := conn.Write(p); err != nil {
+			return fmt.Errorf("write: %w", err)
 		}
 
-		wg.Add(1)
-		go func(c *Client) {
-			defer func() {
-				r.sem.Release(1)
-				wg.Done()
-			}()
-
-			if _, err := c.conn.Write(p); err != nil {
-				slog.WarnContext(c.conn.Request().Context(), "write", "err", err, "user.id", c.user.ID)
-			}
-		}(c)
-	}
-
-	wg.Wait()
+		return nil
+	})
 
 	return len(p), nil
 }
