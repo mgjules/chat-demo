@@ -23,7 +23,7 @@ templ ChatHeaderNumUsers(numUsers uint64) {
 templ ChatHeader(numUsers uint64, userName string) {
 	<div class="flex-none flex justify-between items-center flex-wrap gap-4">
 		<div>
-			<div class="uppercase"><span class="font-extralight">Chatroom</span>Demo</div>
+			<div class="uppercase"><span class="font-extralight">Chatroom </span>Demo</div>
 			@ChatHeaderNumUsers(numUsers)
 		</div>
 		<div class="text-lightblue-200 text-sm">{ userName }</div>

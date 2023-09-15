@@ -75,7 +75,7 @@ func ChatHeader(numUsers uint64, userName string) templ.Component {
 		if err != nil {
 			return err
 		}
-		var_4 := `Chatroom`
+		var_4 := `Chatroom `
 		_, err = templBuffer.WriteString(var_4)
 		if err != nil {
 			return err
