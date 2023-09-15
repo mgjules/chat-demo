@@ -3,7 +3,6 @@ package chat
 import (
 	"container/ring"
 	"errors"
-	"io"
 	"strings"
 	"sync"
 	"time"
@@ -14,9 +13,14 @@ import (
 	"github.com/rs/xid"
 	"golang.org/x/exp/slog"
 	"golang.org/x/net/websocket"
+	"golang.org/x/sync/semaphore"
 )
 
-const maxMessageSize = 256
+const (
+	maxMessageSize uint16 = 256
+	maxSendWorker  uint16 = 1000
+	maxClients     uint16 = 1000
+)
 
 // Message represents a single chat message.
 type Message struct {
@@ -33,7 +37,7 @@ func NewMessage(u *user.User, content string) (*Message, error) {
 	}
 
 	rc := []rune(content)
-	if len(rc) > maxMessageSize {
+	if len(rc) > int(maxMessageSize) {
 		content = string(rc[:maxMessageSize]) + "..."
 	}
 
@@ -48,8 +52,8 @@ func NewMessage(u *user.User, content string) (*Message, error) {
 
 // Client represents the relationship between a user and websocket connections.
 type Client struct {
-	user  *user.User
-	conns map[*websocket.Conn]struct{}
+	user *user.User
+	conn *websocket.Conn
 }
 
 // Room holds the state of a single chat room.
@@ -59,6 +63,7 @@ type Room struct {
 
 	muMessages sync.RWMutex
 	messages   *ring.Ring
+	sem        *semaphore.Weighted
 }
 
 // NewRoom creates a new Room.
@@ -66,33 +71,33 @@ func NewRoom() *Room {
 	return &Room{
 		clients:  make(map[string]*Client),
 		messages: ring.New(100),
+		sem:      semaphore.NewWeighted(int64(maxSendWorker)),
 	}
 }
 
-// AddClient adds a websocket connection to a user as a client
-// If the user does not already have a connection, thus no client
-// it will be created and the method will return true.
-func (r *Room) AddClient(u *user.User, ws *websocket.Conn) bool {
+// AddClient adds a client along with its websocket connection.
+func (r *Room) AddClient(u *user.User, ws *websocket.Conn) error {
 	r.muClients.Lock()
 	defer r.muClients.Unlock()
 	id := u.ID.String()
-	var added bool
-	if _, found := r.clients[id]; !found {
-		r.clients[id] = &Client{
-			user:  u,
-			conns: make(map[*websocket.Conn]struct{}),
-		}
-		added = true
+	if _, found := r.clients[id]; found {
+		return errors.New("you can only have one instance of the chat")
 	}
-	r.clients[id].conns[ws] = struct{}{}
 
-	return added
+	if len(r.clients) >= int(maxClients) {
+		return errors.New("room is full. please retry later")
+	}
+
+	r.clients[id] = &Client{
+		user: u,
+		conn: ws,
+	}
+
+	return nil
 }
 
-// RemoveClient removes a websocket connection from a user.
-// If the user does not have any websocket connection, its client will be removed
-// and the method will return true.
-func (r *Room) RemoveClient(id xid.ID, ws *websocket.Conn) bool {
+// RemoveClient removes a client.
+func (r *Room) RemoveClient(id xid.ID) bool {
 	r.muClients.Lock()
 	defer r.muClients.Unlock()
 	_, found := r.clients[id.String()]
@@ -100,13 +105,9 @@ func (r *Room) RemoveClient(id xid.ID, ws *websocket.Conn) bool {
 		return false
 	}
 
-	delete(r.clients[id.String()].conns, ws)
-	if len(r.clients[id.String()].conns) == 0 {
-		delete(r.clients, id.String())
-		return true
-	}
+	delete(r.clients, id.String())
 
-	return false
+	return true
 }
 
 // NumUsers return the current number of users as clients.
@@ -143,14 +144,29 @@ func (r *Room) Write(p []byte) (int, error) {
 	r.muClients.RLock()
 	defer r.muClients.RUnlock()
 
-	writers := make([]io.Writer, 0)
+	var wg sync.WaitGroup
 	for _, c := range r.clients {
-		for conn := range c.conns {
-			writers = append(writers, conn)
+		if err := r.sem.Acquire(c.conn.Request().Context(), 1); err != nil {
+			slog.WarnContext(c.conn.Request().Context(), "acquire lock", "err", err, "user.id", c.user.ID)
+			continue
 		}
+
+		wg.Add(1)
+		go func(c *Client) {
+			defer func() {
+				r.sem.Release(1)
+				wg.Done()
+			}()
+
+			if _, err := c.conn.Write(p); err != nil {
+				slog.WarnContext(c.conn.Request().Context(), "write", "err", err, "user.id", c.user.ID)
+			}
+		}(c)
 	}
 
-	return io.MultiWriter(writers...).Write(p)
+	wg.Wait()
+
+	return len(p), nil
 }
 
 // IterateClients executes a function fn
@@ -159,11 +175,25 @@ func (r *Room) IterateClients(fn func(u *user.User, conn *websocket.Conn) error)
 	r.muClients.RLock()
 	defer r.muClients.RUnlock()
 
+	var wg sync.WaitGroup
 	for _, c := range r.clients {
-		for conn := range c.conns {
-			if err := fn(c.user, conn); err != nil {
-				slog.WarnContext(conn.Request().Context(), "send message", "err", "user.id", c.user.ID)
-			}
+		if err := r.sem.Acquire(c.conn.Request().Context(), 1); err != nil {
+			slog.WarnContext(c.conn.Request().Context(), "acquire lock", "err", err, "user.id", c.user.ID)
+			continue
 		}
+
+		wg.Add(1)
+		go func(c *Client) {
+			defer func() {
+				r.sem.Release(1)
+				wg.Done()
+			}()
+
+			if err := fn(c.user, c.conn); err != nil {
+				slog.WarnContext(c.conn.Request().Context(), "send message", "err", "user.id", c.user.ID)
+			}
+		}(c)
 	}
+
+	wg.Wait()
 }

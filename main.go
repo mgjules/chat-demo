@@ -173,27 +173,36 @@ func chatroom(r *chat.Room, l *limiters) func(ws *websocket.Conn) {
 		// Retrieve user from context.
 		ctx := ws.Request().Context()
 		u := user.FromContext(ctx)
-		added := r.AddClient(u, ws)
 		logger := slog.Default().With("user.id", u.ID)
+		if err := r.AddClient(u, ws); err != nil {
+			// Inform the current user about the error.
+			if err := templates.ChatForm(true).Render(ctx, ws); err != nil {
+				logger.ErrorContext(ctx, "render form template", "err", err)
+				return
+			}
+			if err := templates.ChatError(err.Error()).Render(ctx, ws); err != nil {
+				logger.ErrorContext(ctx, "render error template", "err", err)
+				return
+			}
+
+			return
+		}
+
 		// Remove client from room when user disconnects.
 		defer func() {
-			if r.RemoveClient(u.ID, ws) {
-				// If user is fully disconnected, remove limiter.
-				l.remove(u)
+			r.RemoveClient(u.ID)
+			l.remove(u)
 
-				// Update number of user online for all users.
-				if err := templates.ChatHeaderNumUsers(r.NumUsers()).Render(ctx, r); err != nil {
-					logger.ErrorContext(ctx, "render online template", "err", err)
-				}
+			// Update number of user online for all users.
+			if err := templates.ChatHeaderNumUsers(r.NumUsers()).Render(ctx, r); err != nil {
+				logger.ErrorContext(ctx, "render online template", "err", err)
 			}
 		}()
 
-		// If added, update number of user online for all users.
-		if added {
-			if err := templates.ChatHeaderNumUsers(r.NumUsers()).Render(ctx, r); err != nil {
-				logger.ErrorContext(ctx, "render online template", "err", err)
-				return
-			}
+		// Update number of user online for all users.
+		if err := templates.ChatHeaderNumUsers(r.NumUsers()).Render(ctx, r); err != nil {
+			logger.ErrorContext(ctx, "render online template", "err", err)
+			return
 		}
 
 		limiter := l.add(u, 5*time.Second, 3)
