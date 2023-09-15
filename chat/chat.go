@@ -78,35 +78,40 @@ func NewRoom() *Room {
 
 // AddClient adds a client along with its websocket connection.
 func (r *Room) AddClient(u *user.User, ws *websocket.Conn) error {
-	r.muClients.Lock()
-	defer r.muClients.Unlock()
 	id := u.ID.String()
-	if _, found := r.clients[id]; found {
+	r.muClients.RLock()
+	_, found := r.clients[id]
+	r.muClients.RUnlock()
+	if found {
 		return errors.New("you can only have one instance of the chat")
 	}
 
-	if len(r.clients) >= int(maxClients) {
+	if r.NumUsers() >= uint64(maxClients) {
 		return errors.New("room is full. please retry later")
 	}
 
+	r.muClients.Lock()
 	r.clients[id] = &Client{
 		user: u,
 		conn: ws,
 	}
+	r.muClients.Unlock()
 
 	return nil
 }
 
 // RemoveClient removes a client.
 func (r *Room) RemoveClient(id xid.ID) bool {
-	r.muClients.Lock()
-	defer r.muClients.Unlock()
+	r.muClients.RLock()
 	_, found := r.clients[id.String()]
+	r.muClients.RUnlock()
 	if !found {
 		return false
 	}
 
+	r.muClients.Lock()
 	delete(r.clients, id.String())
+	r.muClients.Unlock()
 
 	return true
 }
