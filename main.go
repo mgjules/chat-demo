@@ -69,14 +69,14 @@ func run() error {
 		room.AddMessage(msg)
 	}
 
-	l := newLimiters()
+	lims := newLimiters()
 
 	// Protected routes.
 	r.Group(func(r chi.Router) {
 		r.Use(protected)
 
 		r.Get("/", index(room))
-		r.Handle("/chatroom", websocket.Handler(chatroom(room, l)))
+		r.Handle("/chatroom", websocket.Handler(chatroom(room, lims)))
 	})
 
 	r.Get("/login", login(jwt))
@@ -165,16 +165,16 @@ type data struct {
 	Headers map[string]string `json:"HEADERS"`
 }
 
-func chatroom(r *chat.Room, l *limiters) func(ws *websocket.Conn) {
+func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 	return func(ws *websocket.Conn) {
 		ws.MaxPayloadBytes = 2 << 10 // 2KB
 		defer ws.Close()
 
 		// Retrieve user from context.
 		ctx := ws.Request().Context()
-		u := user.FromContext(ctx)
-		logger := slog.Default().With("user.id", u.ID)
-		if err := r.AddClient(u, ws); err != nil {
+		usr := user.FromContext(ctx)
+		logger := slog.Default().With("user.id", usr.ID)
+		if err := room.AddClient(usr, ws); err != nil {
 			// Inform the current user about the error.
 			if err := templates.ChatForm(true).Render(ctx, ws); err != nil {
 				logger.ErrorContext(ctx, "render form template", "err", err)
@@ -190,22 +190,22 @@ func chatroom(r *chat.Room, l *limiters) func(ws *websocket.Conn) {
 
 		// Remove client from room when user disconnects.
 		defer func() {
-			r.RemoveClient(u.ID)
-			l.remove(u)
+			room.RemoveClient(usr.ID)
+			lims.remove(usr)
 
 			// Update number of user online for all users.
-			if err := templates.ChatHeaderNumUsers(r.NumUsers()).Render(ctx, r); err != nil {
+			if err := templates.ChatHeaderNumUsers(room.NumUsers()).Render(ctx, room); err != nil {
 				logger.ErrorContext(ctx, "render online template", "err", err)
 			}
 		}()
 
 		// Update number of user online for all users.
-		if err := templates.ChatHeaderNumUsers(r.NumUsers()).Render(ctx, r); err != nil {
+		if err := templates.ChatHeaderNumUsers(room.NumUsers()).Render(ctx, room); err != nil {
 			logger.ErrorContext(ctx, "render online template", "err", err)
 			return
 		}
 
-		limiter := l.add(u, 5*time.Second, 3)
+		lim := lims.add(usr, 5*time.Second, 3)
 
 		// Receiving and processing client requests.
 		for {
@@ -227,7 +227,7 @@ func chatroom(r *chat.Room, l *limiters) func(ws *websocket.Conn) {
 			}
 
 			// Rate limit to prevent abuse.
-			if !limiter.Allow() {
+			if !lim.Allow() {
 				// Inform the current user to slow down and
 				// disable the form until limiter allows.
 				if err := templates.ChatForm(true).Render(ctx, ws); err != nil {
@@ -240,7 +240,7 @@ func chatroom(r *chat.Room, l *limiters) func(ws *websocket.Conn) {
 				}
 
 				// Wait until user is no more rate-limited
-				if err := limiter.Wait(ctx); err != nil {
+				if err := lim.Wait(ctx); err != nil {
 					logger.ErrorContext(ctx, "limiter wait", "err", err)
 					continue
 				}
@@ -260,7 +260,7 @@ func chatroom(r *chat.Room, l *limiters) func(ws *websocket.Conn) {
 			}
 
 			// Create and add the message to the room.
-			msg, err := chat.NewMessage(u, d.Message)
+			msg, err := chat.NewMessage(usr, d.Message)
 			if err != nil {
 				// Send back an error if we could not create message.
 				// Could be a validation error.
@@ -271,10 +271,10 @@ func chatroom(r *chat.Room, l *limiters) func(ws *websocket.Conn) {
 
 				continue
 			}
-			r.AddMessage(msg)
+			room.AddMessage(msg)
 
 			// Broadcast personalized message to all clients including the current user.
-			r.IterateClients(func(u *user.User, conn *websocket.Conn) error {
+			room.IterateClients(func(u *user.User, conn *websocket.Conn) error {
 				if err := templates.ChatMessageWrapped(u, msg).Render(ctx, conn); err != nil {
 					return fmt.Errorf("render message template: %w", err)
 				}
