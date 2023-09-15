@@ -17,9 +17,7 @@ func ternary(cond bool, str1, str2 string) string {
 }
 
 templ ChatHeaderNumUsers(numUsers uint64) {
-	<div id="online" class="text-xs text-coolgray-400" hx-swap-oob="true">
-		{ strconv.Itoa(int(numUsers)) + " " + ternary(numUsers > 1, "users", "user") }
-	</div>
+	<div id="online" class="text-xs text-coolgray-400" hx-swap-oob="true">{ strconv.Itoa(int(numUsers)) + " " + ternary(numUsers > 1, "users", "user") }</div>
 }
 
 templ ChatHeader(numUsers uint64, userName string) {
@@ -33,9 +31,7 @@ templ ChatHeader(numUsers uint64, userName string) {
 }
 
 templ ChatMessageWrapped(user *user.User, message *chat.Message) {
-	<div hx-swap-oob="beforebegin:#messages>li:last-child">
-		@ChatMessage(user, message)
-	</div>
+	<div hx-swap-oob="beforebegin:#messages&gt;li:last-child">@ChatMessage(user, message)</div>
 }
 
 templ ChatMessage(user *user.User, message *chat.Message) {
