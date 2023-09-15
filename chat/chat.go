@@ -142,9 +142,6 @@ func (r *Room) Messages() []*Message {
 
 // Write implements the io.Writer interface.
 func (r *Room) Write(p []byte) (int, error) {
-	r.muClients.RLock()
-	defer r.muClients.RUnlock()
-
 	r.IterateClients(func(u *user.User, conn *websocket.Conn) error {
 		if _, err := conn.Write(p); err != nil {
 			return fmt.Errorf("write: %w", err)
