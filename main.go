@@ -177,12 +177,8 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 		logger := slog.Default().With("user.id", usr.ID)
 		if err := room.AddClient(usr, ws); err != nil {
 			// Inform the current user about the error.
-			if err := templates.ChatForm(true).Render(ctx, ws); err != nil {
+			if err := templates.ChatForm(true, err.Error()).Render(ctx, ws); err != nil {
 				logger.ErrorContext(ctx, "render form template", "err", err)
-				return
-			}
-			if err := templates.ChatError(err.Error()).Render(ctx, ws); err != nil {
-				logger.ErrorContext(ctx, "render error template", "err", err)
 				return
 			}
 
@@ -219,7 +215,7 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 				logger.ErrorContext(ctx, "receive message", "err", err)
 
 				// Inform user something went wrong.
-				if err := templates.ChatError("could not read your message").Render(ctx, ws); err != nil {
+				if err := templates.ChatForm(false, "could not read your message").Render(ctx, ws); err != nil {
 					logger.ErrorContext(ctx, "render error template", "err", err)
 					break
 				}
@@ -231,12 +227,8 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 			if wait, err := lim.Limit(ctx); errors.Is(err, mlimiters.ErrLimitExhausted) {
 				// Inform the current user to slow down and
 				// disable the form until limiter allows.
-				if err := templates.ChatForm(true).Render(ctx, ws); err != nil {
+				if err := templates.ChatForm(true, "please slow down").Render(ctx, ws); err != nil {
 					logger.ErrorContext(ctx, "render form template", "err", err)
-					break
-				}
-				if err := templates.ChatError("please slow down").Render(ctx, ws); err != nil {
-					logger.ErrorContext(ctx, "render error template", "err", err)
 					break
 				}
 
@@ -245,12 +237,8 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 
 				// Re-enable the form.
 				// Clear the error for the current user.
-				if err := templates.ChatForm(false).Render(ctx, ws); err != nil {
+				if err := templates.ChatForm(false, "").Render(ctx, ws); err != nil {
 					logger.ErrorContext(ctx, "render form template", "err", err)
-					break
-				}
-				if err := templates.ChatError("").Render(ctx, ws); err != nil {
-					logger.ErrorContext(ctx, "render error template", "err", err)
 					break
 				}
 
@@ -262,7 +250,7 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 			if err != nil {
 				// Send back an error if we could not create message.
 				// Could be a validation error.
-				if err := templates.ChatError(err.Error()).Render(ctx, ws); err != nil {
+				if err := templates.ChatForm(false, err.Error()).Render(ctx, ws); err != nil {
 					logger.ErrorContext(ctx, "render error template", "err", err)
 					break
 				}
@@ -281,12 +269,8 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 			})
 
 			// Reset the form and clear the error for the current user.
-			if err := templates.ChatForm(false).Render(ctx, ws); err != nil {
+			if err := templates.ChatForm(false, "").Render(ctx, ws); err != nil {
 				logger.ErrorContext(ctx, "render form template", "err", err)
-				break
-			}
-			if err := templates.ChatError("").Render(ctx, ws); err != nil {
-				logger.ErrorContext(ctx, "render error template", "err", err)
 				break
 			}
 		}

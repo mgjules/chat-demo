@@ -269,7 +269,7 @@ func ChatMessages(user *user.User, messages []*chat.Message) templ.Component {
 	})
 }
 
-func ChatForm(disabled bool) templ.Component {
+func ChatForm(disabled bool, cErr string) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -282,7 +282,26 @@ func ChatForm(disabled bool) templ.Component {
 			var_14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<form id=\"form\" hx-swap-oob=\"true\" class=\"flex-none mt-4\" ws-send hx-on::load=\"this.querySelector(&#39;input[name=chat_message]&#39;).focus()\"><input name=\"chat_message\" type=\"text\" placeholder=\"Type here\"")
+		_, err = templBuffer.WriteString("<form id=\"form\" hx-swap-oob=\"true\" class=\"flex-none mt-4 transition-all\" ws-send hx-on::load=\"this.querySelector(&#39;input[name=chat_message]&#39;).focus()\"><div class=\"relative flex\"><div id=\"error\" class=\"absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-3/5\" hx-swap-oob=\"true\">")
+		if err != nil {
+			return err
+		}
+		if cErr != "" {
+			_, err = templBuffer.WriteString("<div class=\"flex-none text-red mt-2 text-xs capitalize\">")
+			if err != nil {
+				return err
+			}
+			var var_15 string = cErr
+			_, err = templBuffer.WriteString(templ.EscapeString(var_15))
+			if err != nil {
+				return err
+			}
+			_, err = templBuffer.WriteString("</div>")
+			if err != nil {
+				return err
+			}
+		}
+		_, err = templBuffer.WriteString("</div><input name=\"chat_message\" type=\"text\" placeholder=\"Type here\"")
 		if err != nil {
 			return err
 		}
@@ -292,50 +311,7 @@ func ChatForm(disabled bool) templ.Component {
 				return err
 			}
 		}
-		_, err = templBuffer.WriteString(" maxlength=\"256\" required class=\"w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md\"></form>")
-		if err != nil {
-			return err
-		}
-		if !templIsBuffer {
-			_, err = templBuffer.WriteTo(w)
-		}
-		return err
-	})
-}
-
-func ChatError(cErr string) templ.Component {
-	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
-		templBuffer, templIsBuffer := w.(*bytes.Buffer)
-		if !templIsBuffer {
-			templBuffer = templ.GetBuffer()
-			defer templ.ReleaseBuffer(templBuffer)
-		}
-		ctx = templ.InitializeContext(ctx)
-		var_15 := templ.GetChildren(ctx)
-		if var_15 == nil {
-			var_15 = templ.NopComponent
-		}
-		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<div id=\"error\" hx-swap-oob=\"true\">")
-		if err != nil {
-			return err
-		}
-		if cErr != "" {
-			_, err = templBuffer.WriteString("<div class=\"flex-none text-red mt-2 text-xs capitalize\">")
-			if err != nil {
-				return err
-			}
-			var var_16 string = cErr
-			_, err = templBuffer.WriteString(templ.EscapeString(var_16))
-			if err != nil {
-				return err
-			}
-			_, err = templBuffer.WriteString("</div>")
-			if err != nil {
-				return err
-			}
-		}
-		_, err = templBuffer.WriteString("</div>")
+		_, err = templBuffer.WriteString(" maxlength=\"256\" required class=\"w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md\"></div></form>")
 		if err != nil {
 			return err
 		}
@@ -354,27 +330,27 @@ func ChatFooter() templ.Component {
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_17 := templ.GetChildren(ctx)
-		if var_17 == nil {
-			var_17 = templ.NopComponent
+		var_16 := templ.GetChildren(ctx)
+		if var_16 == nil {
+			var_16 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<div class=\"flex-none mt-4 text-xs text-center text-coolgray-400\">")
 		if err != nil {
 			return err
 		}
-		var_18 := `Copyright (c) `
-		_, err = templBuffer.WriteString(var_18)
+		var_17 := `Copyright (c) `
+		_, err = templBuffer.WriteString(var_17)
 		if err != nil {
 			return err
 		}
-		var var_19 string = time.Now().Format("2006")
-		_, err = templBuffer.WriteString(templ.EscapeString(var_19))
+		var var_18 string = time.Now().Format("2006")
+		_, err = templBuffer.WriteString(templ.EscapeString(var_18))
 		if err != nil {
 			return err
 		}
-		var_20 := `. All rights reserved.`
-		_, err = templBuffer.WriteString(var_20)
+		var_19 := `. All rights reserved.`
+		_, err = templBuffer.WriteString(var_19)
 		if err != nil {
 			return err
 		}
@@ -397,12 +373,21 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 			defer templ.ReleaseBuffer(templBuffer)
 		}
 		ctx = templ.InitializeContext(ctx)
-		var_21 := templ.GetChildren(ctx)
-		if var_21 == nil {
-			var_21 = templ.NopComponent
+		var_20 := templ.GetChildren(ctx)
+		if var_20 == nil {
+			var_20 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
 		_, err = templBuffer.WriteString("<script src=\"https://unpkg.com/htmx.org/dist/ext/ws.js\">")
+		if err != nil {
+			return err
+		}
+		var_21 := ``
+		_, err = templBuffer.WriteString(var_21)
+		if err != nil {
+			return err
+		}
+		_, err = templBuffer.WriteString("</script><script src=\"https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js\">")
 		if err != nil {
 			return err
 		}
@@ -411,20 +396,11 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</script><script src=\"https://unpkg.com/timeago.js@4.0.2/dist/timeago.min.js\">")
-		if err != nil {
-			return err
-		}
-		var_23 := ``
-		_, err = templBuffer.WriteString(var_23)
-		if err != nil {
-			return err
-		}
 		_, err = templBuffer.WriteString("</script><script type=\"text/javascript\">")
 		if err != nil {
 			return err
 		}
-		var_24 := `
+		var_23 := `
 		function applyTimeago() {
 			// Select only element that has not been processed by timeago yet.
 			const els = document.querySelectorAll('.timeago:not([timeago-id])')
@@ -481,7 +457,7 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 			})
 		})
 	`
-		_, err = templBuffer.WriteString(var_24)
+		_, err = templBuffer.WriteString(var_23)
 		if err != nil {
 			return err
 		}
@@ -497,11 +473,7 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 		if err != nil {
 			return err
 		}
-		err = ChatForm(disabled).Render(ctx, templBuffer)
-		if err != nil {
-			return err
-		}
-		err = ChatError(cErr).Render(ctx, templBuffer)
+		err = ChatForm(disabled, cErr).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
