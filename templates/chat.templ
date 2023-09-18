@@ -83,7 +83,7 @@ templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
 			timeago.render(els, 'mini-locale', { minInterval: 10 })
 		}
 
-		window.onload = () => {
+		document.addEventListener("DOMContentLoaded", () => {
 			// The defaults locales are too verbose.
 			timeago.register('mini-locale', (number, index, totalSec) => {
 				return [
@@ -120,7 +120,7 @@ templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
 										block: "end",
 										inline: "nearest"
 									})
-									document.querySelector('#form>input[name=chat_message]').focus()
+									document.querySelector('#form>input[name=chat_message]:not([disabled])').focus()
 									// no need to keep observing since it's a one-off operation.
 									observer.disconnect()
 							}
@@ -131,7 +131,7 @@ templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
 			observer.observe(document.body, {
 				attributeFilter: ["un-cloak"]
 			})
-		}
+		})
 	</script>
 	<div hx-ext="ws" ws-connect="/chatroom" class="flex flex-col p-4 container mx-auto max-h-screen">@ChatHeader(room.NumUsers(), user.Name)@ChatMessages(user, room.Messages())@ChatForm(disabled)@ChatError(cErr)@ChatFooter()</div>
 }

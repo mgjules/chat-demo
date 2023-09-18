@@ -431,7 +431,7 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 			timeago.render(els, 'mini-locale', { minInterval: 10 })
 		}
 
-		window.onload = () => {
+		document.addEventListener("DOMContentLoaded", () => {
 			// The defaults locales are too verbose.
 			timeago.register('mini-locale', (number, index, totalSec) => {
 				return [
@@ -468,7 +468,7 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 										block: "end",
 										inline: "nearest"
 									})
-									document.querySelector('#form>input[name=chat_message]').focus()
+									document.querySelector('#form>input[name=chat_message]:not([disabled])').focus()
 									// no need to keep observing since it's a one-off operation.
 									observer.disconnect()
 							}
@@ -479,7 +479,7 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 			observer.observe(document.body, {
 				attributeFilter: ["un-cloak"]
 			})
-		}
+		})
 	`
 		_, err = templBuffer.WriteString(var_24)
 		if err != nil {
