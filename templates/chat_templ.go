@@ -464,7 +464,7 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 									// Safe to assume that UnoCSS has loaded.
 									// Scroll to last message and focus the form input.
 									document.querySelector('#messages>li:last-child').scrollIntoView({
-										behavior: "smooth",
+										behavior: "auto",
 										block: "end",
 										inline: "nearest"
 									})
