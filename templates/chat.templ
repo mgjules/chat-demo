@@ -60,7 +60,7 @@ templ ChatMessages(user *user.User, messages []*chat.Message) {
 templ ChatForm(disabled bool, cErr string) {
 	<form id="form" hx-swap-oob="true" class="flex-none mt-4 transition-all" ws-send hx-on::load="this.querySelector(&#39;input[name=chat_message]&#39;).focus()">
 		<div class="relative flex">
-			<div id="error" class="absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-3/5" hx-swap-oob="true">
+			<div id="error" class="absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-2/3" hx-swap-oob="true">
 				if cErr != "" {
 					<div class="flex-none text-red mt-2 text-xs capitalize">{ cErr }</div>
 				}

@@ -282,7 +282,7 @@ func ChatForm(disabled bool, cErr string) templ.Component {
 			var_14 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		_, err = templBuffer.WriteString("<form id=\"form\" hx-swap-oob=\"true\" class=\"flex-none mt-4 transition-all\" ws-send hx-on::load=\"this.querySelector(&#39;input[name=chat_message]&#39;).focus()\"><div class=\"relative flex\"><div id=\"error\" class=\"absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-3/5\" hx-swap-oob=\"true\">")
+		_, err = templBuffer.WriteString("<form id=\"form\" hx-swap-oob=\"true\" class=\"flex-none mt-4 transition-all\" ws-send hx-on::load=\"this.querySelector(&#39;input[name=chat_message]&#39;).focus()\"><div class=\"relative flex\"><div id=\"error\" class=\"absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-2/3\" hx-swap-oob=\"true\">")
 		if err != nil {
 			return err
 		}
