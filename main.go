@@ -15,6 +15,7 @@ import (
 	"github.com/go-faker/faker/v4/pkg/options"
 	"github.com/joho/godotenv"
 	"github.com/lestrrat-go/jwx/v2/jwt"
+	mlimiters "github.com/mennanov/limiters"
 	"github.com/mgjules/chat-demo/chat"
 	"github.com/mgjules/chat-demo/templates"
 	"github.com/mgjules/chat-demo/user"
@@ -227,7 +228,7 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 			}
 
 			// Rate limit to prevent abuse.
-			if !lim.Allow() {
+			if wait, err := lim.Limit(ctx); errors.Is(err, mlimiters.ErrLimitExhausted) {
 				// Inform the current user to slow down and
 				// disable the form until limiter allows.
 				if err := templates.ChatForm(true).Render(ctx, ws); err != nil {
@@ -240,10 +241,7 @@ func chatroom(room *chat.Room, lims *limiters) func(ws *websocket.Conn) {
 				}
 
 				// Wait until user is no more rate-limited
-				if err := lim.Wait(ctx); err != nil {
-					logger.ErrorContext(ctx, "limiter wait", "err", err)
-					continue
-				}
+				<-time.After(wait)
 
 				// Re-enable the form.
 				// Clear the error for the current user.

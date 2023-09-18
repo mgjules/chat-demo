@@ -4,22 +4,22 @@ import (
 	"sync"
 	"time"
 
+	mlimiters "github.com/mennanov/limiters"
 	"github.com/mgjules/chat-demo/user"
-	"golang.org/x/time/rate"
 )
 
 type limiters struct {
 	mu       sync.RWMutex
-	limiters map[string]*rate.Limiter
+	limiters map[string]*mlimiters.TokenBucket
 }
 
 func newLimiters() *limiters {
 	return &limiters{
-		limiters: make(map[string]*rate.Limiter),
+		limiters: make(map[string]*mlimiters.TokenBucket),
 	}
 }
 
-func (l *limiters) add(u *user.User, d time.Duration, b int) *rate.Limiter {
+func (l *limiters) add(u *user.User, d time.Duration, b int64) *mlimiters.TokenBucket {
 	l.mu.RLock()
 	limiter, found := l.limiters[u.ID.String()]
 	l.mu.RUnlock()
@@ -27,7 +27,7 @@ func (l *limiters) add(u *user.User, d time.Duration, b int) *rate.Limiter {
 		return limiter
 	}
 
-	limiter = rate.NewLimiter(rate.Every(d), b)
+	limiter = mlimiters.NewTokenBucket(b, d, mlimiters.NewLockNoop(), mlimiters.NewTokenBucketInMemory(), mlimiters.NewSystemClock(), mlimiters.NewStdLogger())
 	l.mu.Lock()
 	l.limiters[u.ID.String()] = limiter
 	l.mu.Unlock()
