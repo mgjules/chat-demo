@@ -29,7 +29,7 @@ templ Page(user *user.User, room *chat.Room, disabled bool, cErr string) {
 					],
 				}
 			</script>
-			<script src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
+			<script defer src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
 		</head>
 		<body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">@Chat(user, room, disabled, cErr)</body>
 	</html>

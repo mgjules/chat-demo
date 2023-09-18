@@ -83,11 +83,11 @@ func (r *Room) AddClient(u *user.User, ws *websocket.Conn) error {
 	_, found := r.clients[id]
 	r.muClients.RUnlock()
 	if found {
-		return errors.New("you can only have one instance of the chat")
+		return errors.New("you already have a running session for this room")
 	}
 
 	if r.NumUsers() >= uint64(maxClients) {
-		return errors.New("room is full. please retry later")
+		return errors.New("the room is full. please retry later")
 	}
 
 	r.muClients.Lock()

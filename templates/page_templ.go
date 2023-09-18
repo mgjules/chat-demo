@@ -75,7 +75,7 @@ func Page(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</script><script src=\"https://cdn.jsdelivr.net/npm/@unocss/runtime\">")
+		_, err = templBuffer.WriteString("</script><script defer src=\"https://cdn.jsdelivr.net/npm/@unocss/runtime\">")
 		if err != nil {
 			return err
 		}

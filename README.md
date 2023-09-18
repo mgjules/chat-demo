@@ -1,5 +1,5 @@
 # chat-demo
 
-Websocket chat demo made in HTMX, Templ and Go.
+Websocket chat demo made in HTMX, Templ, AlpineJS and Go.
 
 ![Preview](preview.png)
