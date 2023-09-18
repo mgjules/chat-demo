@@ -444,7 +444,7 @@ func Chat(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 										block: "end",
 										inline: "nearest"
 									})
-									document.querySelector('#form>input[name=chat_message]:not([disabled])').focus()
+									document.querySelector('#form>div>input[name=chat_message]:not([disabled])').focus()
 									// no need to keep observing since it's a one-off operation.
 									observer.disconnect()
 							}
