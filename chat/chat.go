@@ -2,7 +2,6 @@ package chat
 
 import (
 	"container/ring"
-	"errors"
 	"fmt"
 	"strings"
 	"sync"
@@ -23,6 +22,51 @@ const (
 	maxClients     uint16 = 1000
 )
 
+// List of chat errors.
+var (
+	ErrLoading         = NewError(ErrorSeverityWarning, true, "loading...")
+	ErrUnknown         = NewError(ErrorSeverityError, false, "unknown error")
+	ErrRateLimited     = NewError(ErrorSeverityWarning, false, "please slow down")
+	ErrMessageEmpty    = NewError(ErrorSeverityError, false, "message content cannot be empty")
+	ErrExistingSession = NewError(ErrorSeverityError, true, "you already have a running session for this room")
+	ErrRoomFull        = NewError(ErrorSeverityError, true, "the room is full")
+)
+
+// ErrorSeverity is the severity of an error.
+type ErrorSeverity uint8
+
+// List of chat errors.
+const (
+	ErrorSeverityWarning ErrorSeverity = iota
+	ErrorSeverityError
+)
+
+// Error represents a chat error.
+type Error struct {
+	err      string
+	severity ErrorSeverity
+	global   bool
+}
+
+// NewError creates a new Error.
+func NewError(s ErrorSeverity, global bool, err string) Error {
+	return Error{severity: s, global: global, err: err}
+}
+
+// IsError checks if the error of severity error.
+func (e Error) IsError() bool { return e.severity == ErrorSeverityError }
+
+// IsWarning checks if the error of severity warning.
+func (e Error) IsWarning() bool { return e.severity == ErrorSeverityWarning }
+
+// IsGlobal returns true if the error is a global error.
+func (e Error) IsGlobal() bool { return e.global }
+
+// Error implements the Error interface.
+func (e Error) Error() string {
+	return e.err
+}
+
 // Message represents a single chat message.
 type Message struct {
 	User    *user.User
@@ -34,7 +78,7 @@ type Message struct {
 func NewMessage(u *user.User, content string) (*Message, error) {
 	content = strings.TrimSpace(content)
 	if content == "" {
-		return nil, errors.New("message content cannot be empty")
+		return nil, ErrMessageEmpty
 	}
 
 	rc := []rune(content)
@@ -78,20 +122,16 @@ func NewRoom() *Room {
 
 // AddClient adds a client along with its websocket connection.
 func (r *Room) AddClient(u *user.User, ws *websocket.Conn) error {
-	id := u.ID.String()
-	r.muClients.RLock()
-	_, found := r.clients[id]
-	r.muClients.RUnlock()
-	if found {
-		return errors.New("you already have a running session for this room")
+	if _, found := r.GetClient(u.ID); found {
+		return ErrExistingSession
 	}
 
-	if r.NumUsers() >= uint64(maxClients) {
-		return errors.New("the room is full. please retry later")
+	if r.IsAtCapacity() {
+		return ErrRoomFull
 	}
 
 	r.muClients.Lock()
-	r.clients[id] = &Client{
+	r.clients[u.ID.String()] = &Client{
 		user: u,
 		conn: ws,
 	}
@@ -100,12 +140,22 @@ func (r *Room) AddClient(u *user.User, ws *websocket.Conn) error {
 	return nil
 }
 
+// IsAtCapacity returns true if the room is at capacity.
+func (r *Room) IsAtCapacity() bool {
+	return r.NumUsers() >= uint64(maxClients)
+}
+
+// GetClient gets a client.
+func (r *Room) GetClient(id xid.ID) (*Client, bool) {
+	r.muClients.RLock()
+	defer r.muClients.RUnlock()
+	client, found := r.clients[id.String()]
+	return client, found
+}
+
 // RemoveClient removes a client.
 func (r *Room) RemoveClient(id xid.ID) bool {
-	r.muClients.RLock()
-	_, found := r.clients[id.String()]
-	r.muClients.RUnlock()
-	if !found {
+	if _, found := r.GetClient(id); !found {
 		return false
 	}
 

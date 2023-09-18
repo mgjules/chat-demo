@@ -5,7 +5,7 @@ import (
 	"github.com/mgjules/chat-demo/user"
 )
 
-templ Page(user *user.User, room *chat.Room, disabled bool, cErr string) {
+templ Page(user *user.User, room *chat.Room, cErr *chat.Error) {
 	<!DOCTYPE html>
 	<html>
 		<head>
@@ -13,25 +13,37 @@ templ Page(user *user.User, room *chat.Room, disabled bool, cErr string) {
 			<meta http-equiv="X-UA-Compatible" content="IE=edge"/>
 			<title>Chat Demo</title>
 			<meta name="viewport" content="width=device-width, initial-scale=1"/>
-			<script src="https://unpkg.com/htmx.org@1.9.5" integrity="sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO" crossorigin="anonymous"></script>
-			<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.min.css"/>
 			<style>
 				[un-cloak] {
 					display: none
 				}
 			</style>
-			<script type="text/javascript">
-				// UnoCSS options.
-				window.__unocss = {
-					rules: [
-						['overflow-anchor-none', { "overflow-anchor": 'none' }],
-						['overflow-anchor-auto', { "overflow-anchor": 'auto' }],
-					],
-				}
+			<script type="module">
+			  // UnoCSS
+				import { presetWind, presetIcons } from 'https://cdn.jsdelivr.net/npm/unocss@0.55.7/+esm'
+				import initUnocssRuntime from 'https://cdn.jsdelivr.net/npm/@unocss/runtime@0.55.7/+esm'
+				import reset from 'https://cdn.jsdelivr.net/npm/@unocss/reset@0.55.7/tailwind-compat.css' assert { type: 'css' }
+
+				document.adoptedStyleSheets = [reset];
+
+				// UnoCSS default configuration.
+				initUnocssRuntime({
+					defaults: {
+						presets: [
+							presetWind(),
+							presetIcons({
+								cdn: 'https://esm.sh/'
+							})
+						],
+						rules: [
+							['overflow-anchor-none', { "overflow-anchor": 'none' }],
+							['overflow-anchor-auto', { "overflow-anchor": 'auto' }],
+						],
+					}
+				})
 			</script>
-			<script defer src="https://cdn.jsdelivr.net/npm/@unocss/runtime"></script>
 		</head>
-		<body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">@Chat(user, room, disabled, cErr)</body>
+		<body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">@Chat(user, room, cErr)</body>
 	</html>
 }
 

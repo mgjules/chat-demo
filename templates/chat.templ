@@ -8,12 +8,12 @@ import (
 	"github.com/mgjules/chat-demo/user"
 )
 
-templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
+templ Chat(user *user.User, room *chat.Room, cErr *chat.Error) {
 	<script defer type="module">
-    import Alpine from "https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/module.esm.min.js"
-		import "https://unpkg.com/htmx.org@1.9.5"
-		import "https://unpkg.com/htmx.org@1.9.5/dist/ext/ws.js"
-		import { register, render } from "https://unpkg.com/timeago.js@4.0.2?module"
+    import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/module.esm.min.js'
+		import 'https://unpkg.com/htmx.org@1.9.5'
+		import 'https://unpkg.com/htmx.org@1.9.5/dist/ext/ws.js'
+		import { register, render } from 'https://unpkg.com/timeago.js@4.0.2?module'
 
 		window.Alpine = Alpine
 
@@ -45,9 +45,9 @@ templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
 					const observer = new MutationObserver((mutationList) => {
 						mutationList.forEach((mutation) => {
 							switch (mutation.type) {
-								case "attributes":
+								case 'attributes':
 									switch (mutation.attributeName) {
-										case "un-cloak":
+										case 'un-cloak':
 											this.scrollIntoView()
 											this.focus()
 											observer.disconnect()
@@ -57,7 +57,7 @@ templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
 						})
 					})
 					observer.observe(document.body, {
-						attributeFilter: ["un-cloak"]
+						attributeFilter: ['un-cloak']
 					})
 				},
 				scrollIntoView() {
@@ -75,8 +75,21 @@ templ Chat(user *user.User, room *chat.Room, disabled bool, cErr string) {
 
 		Alpine.start()
 	</script>
+	<div class="relative">
+		@ChatGlobalError(cErr)
+		<div hx-ext="ws" ws-connect="/chatroom" class="flex flex-col p-4 container mx-auto max-h-screen" x-data="chat">@ChatHeader(room.NumUsers(), user.Name)@ChatMessages(user, room.Messages())@ChatForm(cErr)@ChatFooter()</div>
+	</div>
+}
 
-	<div hx-ext="ws" ws-connect="/chatroom" class="flex flex-col p-4 container mx-auto max-h-screen" x-data="chat">@ChatHeader(room.NumUsers(), user.Name)@ChatMessages(user, room.Messages())@ChatForm(disabled, cErr)@ChatFooter()</div>
+templ ChatGlobalError(cErr *chat.Error) {
+	<div id="error" hx-swap-oob="true">
+		if cErr != nil && cErr.IsGlobal() {
+		<div class={ templ.SafeClass(ternary(cErr.IsError(), "text-red", "text-orange")),"absolute z-4 flex flex-col gap-4 justify-center items-center w-screen h-screen px-2 text-center backdrop-blur-lg bg-coolgray-800/70 uppercase" }>
+			<div class={ templ.SafeClass(ternary(cErr.IsError(), "i-carbon:error", "i-carbon:warning-alt")), "text-4xl" }></div>
+			{ cErr.Error() }
+		</div>
+		}
+	</div>
 }
 
 templ ChatHeaderNumUsers(numUsers uint64) {
@@ -86,7 +99,10 @@ templ ChatHeaderNumUsers(numUsers uint64) {
 templ ChatHeader(numUsers uint64, userName string) {
 	<div class="flex-none flex justify-between items-center flex-wrap gap-4">
 		<div>
-			<div class="uppercase"><span class="font-extralight">Chatroom </span>Demo</div>
+			<div class="flex items-center gap-2 uppercase">
+				<div class="i-carbon-chat z-2"></div>
+				<div><span class="font-extralight">Chatroom </span>Demo</div>
+			</div>
 			@ChatHeaderNumUsers(numUsers)
 		</div>
 		<div class="text-lightblue-200 text-sm">{ userName }</div>
@@ -120,15 +136,17 @@ templ ChatMessages(user *user.User, messages []*chat.Message) {
 	</ul>
 }
 
-templ ChatForm(disabled bool, cErr string) {
-	<form id="form" hx-swap-oob="true" class="flex-none mt-4 transition-all" ws-send >
+templ ChatForm(cErr *chat.Error) {
+	<form id="form" hx-swap-oob="true" class="flex-none mt-4 transition-all" ws-send>
 		<div class="relative flex">
-			<div id="error" class="absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-2/3" hx-swap-oob="true">
-				if cErr != "" {
-					<div class="flex-none text-red mt-2 text-xs capitalize">{ cErr }</div>
+			<div class="absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-2/3">
+				if cErr != nil && !cErr.IsGlobal() {
+					<div class={ ternary(cErr != nil && cErr.IsError(), "text-red", "text-orange"), "flex-none mt-2 text-xs uppercase text-center" }>{ cErr.Error() }</div>
 				}
 			</div>
-			<input name="chat_message" type="text" placeholder="Type here" disabled?={ disabled } maxlength="256" required x-ref="input" x-init="focus()" class="w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md"/>
+			<input name="chat_message" type="text" placeholder={ ternary(cErr == nil, "Type here", "") } 
+				disabled?={ cErr != nil } maxlength="256" required x-ref="input" x-init="focus()" 
+				class={ templ.KV(ternary(cErr != nil && cErr.IsError(), "border-red", "border-orange"), cErr != nil && !cErr.IsGlobal()), templ.SafeClass("w-full px-3 py-2 text-sm bg-coolgray-700 bg-opacity-70 border-1 border-coolgray-600 outline-none ring-0 focus:ring-1 focus:ring-coolgray-600 transition-all disabled:opacity-40 disabled:cursor-not-allowed rounded-md") }/>
 		</div>
 	</form>
 }
@@ -144,3 +162,4 @@ func ternary(cond bool, str1, str2 string) string {
 
 	return str2
 }
+

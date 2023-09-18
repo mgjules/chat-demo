@@ -14,7 +14,7 @@ import (
 	"github.com/mgjules/chat-demo/user"
 )
 
-func Page(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Component {
+func Page(user *user.User, room *chat.Room, cErr *chat.Error) templ.Component {
 	return templ.ComponentFunc(func(ctx context.Context, w io.Writer) (err error) {
 		templBuffer, templIsBuffer := w.(*bytes.Buffer)
 		if !templIsBuffer {
@@ -36,51 +36,48 @@ func Page(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><script src=\"https://unpkg.com/htmx.org@1.9.5\" integrity=\"sha384-xcuj3WpfgjlKF+FXhSQFQ0ZNr39ln+hwjN3npfM9VBnUskLolQAcN80McRIVOPuO\" crossorigin=\"anonymous\">")
+		_, err = templBuffer.WriteString("</title><meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"><style>")
 		if err != nil {
 			return err
 		}
-		var_3 := ``
-		_, err = templBuffer.WriteString(var_3)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</script><link rel=\"stylesheet\" href=\"https://cdn.jsdelivr.net/npm/@unocss/reset/tailwind.min.css\"><style>")
-		if err != nil {
-			return err
-		}
-		var_4 := `
+		var_3 := `
 				[un-cloak] {
 					display: none
 				}
 			`
-		_, err = templBuffer.WriteString(var_4)
+		_, err = templBuffer.WriteString(var_3)
 		if err != nil {
 			return err
 		}
-		_, err = templBuffer.WriteString("</style><script type=\"text/javascript\">")
+		_, err = templBuffer.WriteString("</style><script type=\"module\">")
 		if err != nil {
 			return err
 		}
-		var_5 := `
-				// UnoCSS options.
-				window.__unocss = {
-					rules: [
-						['overflow-anchor-none', { "overflow-anchor": 'none' }],
-						['overflow-anchor-auto', { "overflow-anchor": 'auto' }],
-					],
-				}
+		var_4 := `
+			  // UnoCSS
+				import { presetWind, presetIcons } from 'https://cdn.jsdelivr.net/npm/unocss@0.55.7/+esm'
+				import initUnocssRuntime from 'https://cdn.jsdelivr.net/npm/@unocss/runtime@0.55.7/+esm'
+				import reset from 'https://cdn.jsdelivr.net/npm/@unocss/reset@0.55.7/tailwind-compat.css' assert { type: 'css' }
+
+				document.adoptedStyleSheets = [reset];
+
+				// UnoCSS default configuration.
+				initUnocssRuntime({
+					defaults: {
+						presets: [
+							presetWind(),
+							presetIcons({
+								cdn: 'https://esm.sh/'
+							})
+						],
+						rules: [
+							['overflow-anchor-none', { "overflow-anchor": 'none' }],
+							['overflow-anchor-auto', { "overflow-anchor": 'auto' }],
+						],
+					}
+				})
 			`
-		_, err = templBuffer.WriteString(var_5)
-		if err != nil {
-			return err
-		}
-		_, err = templBuffer.WriteString("</script><script defer src=\"https://cdn.jsdelivr.net/npm/@unocss/runtime\">")
-		if err != nil {
-			return err
-		}
-		var_6 := ``
-		_, err = templBuffer.WriteString(var_6)
+		_, err = templBuffer.WriteString(var_4)
 		if err != nil {
 			return err
 		}
@@ -88,7 +85,7 @@ func Page(user *user.User, room *chat.Room, disabled bool, cErr string) templ.Co
 		if err != nil {
 			return err
 		}
-		err = Chat(user, room, disabled, cErr).Render(ctx, templBuffer)
+		err = Chat(user, room, cErr).Render(ctx, templBuffer)
 		if err != nil {
 			return err
 		}
