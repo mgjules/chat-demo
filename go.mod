@@ -8,7 +8,7 @@ require (
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/jwtauth/v5 v5.1.1
-	github.com/go-faker/faker/v4 v4.1.1
+	github.com/go-faker/faker/v4 v4.2.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/jwx/v2 v2.0.12
 	github.com/mennanov/limiters v1.2.1
