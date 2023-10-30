@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/TwiN/go-away v1.6.11
-	github.com/a-h/templ v0.2.334
+	github.com/a-h/templ v0.2.428
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/jwtauth/v5 v5.1.1
