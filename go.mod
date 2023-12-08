@@ -4,7 +4,7 @@ go 1.20
 
 require (
 	github.com/TwiN/go-away v1.6.11
-	github.com/a-h/templ v0.2.334
+	github.com/a-h/templ v0.2.476
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-chi/chi/v5 v5.0.10
 	github.com/go-chi/jwtauth/v5 v5.1.1
@@ -14,7 +14,7 @@ require (
 	github.com/mennanov/limiters v1.2.1
 	github.com/rs/xid v1.5.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
-	golang.org/x/net v0.15.0
+	golang.org/x/net v0.17.0
 	golang.org/x/sync v0.5.0
 )
 
