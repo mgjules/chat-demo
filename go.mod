@@ -14,7 +14,7 @@ require (
 	github.com/mennanov/limiters v1.2.1
 	github.com/rs/xid v1.5.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
-	golang.org/x/net v0.15.0
+	golang.org/x/net v0.19.0
 	golang.org/x/sync v0.5.0
 )
 
