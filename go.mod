@@ -11,10 +11,10 @@ require (
 	github.com/go-faker/faker/v4 v4.2.0
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/jwx/v2 v2.0.18
-	github.com/mennanov/limiters v1.2.1
+	github.com/mennanov/limiters v1.2.4
 	github.com/rs/xid v1.5.0
 	golang.org/x/exp v0.0.0-20230905200255-921286631fa9
-	golang.org/x/net v0.15.0
+	golang.org/x/net v0.17.0
 	golang.org/x/sync v0.5.0
 )
 
