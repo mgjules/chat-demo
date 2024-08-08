@@ -3,7 +3,7 @@ module github.com/mgjules/chat-demo
 go 1.20
 
 require (
-	github.com/TwiN/go-away v1.6.11
+	github.com/TwiN/go-away v1.6.13
 	github.com/a-h/templ v0.2.334
 	github.com/enescakir/emoji v1.0.0
 	github.com/go-chi/chi/v5 v5.0.10
