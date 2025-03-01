@@ -1,0 +1,39 @@
+<script defer type=\"module\">\n    import Alpine from 'https://cdn.jsdelivr.net/npm/alpinejs@3.13.0/dist/module.esm.min.js'\n\t\timport 'https://unpkg.com/htmx.org@1.9.5'\n\t\timport 'https://unpkg.com/htmx.org@1.9.5/dist/ext/ws.js'\n\t\timport { register, render } from 'https://unpkg.com/timeago.js@4.0.2?module'\n\n\t\twindow.Alpine = Alpine\n\n\t\tdocument.addEventListener('alpine:init', () => {\n\t\t\tAlpine.data('chat', () => ({\n\t\t\t\tinit() {\n\t\t\t\t\t// The defaults locales are too verbose.\n\t\t\t\t\tregister('mini-locale', (number, index, totalSec) => {\n\t\t\t\t\t\treturn [\n\t\t\t\t\t\t\t['now', 'soon'],\n\t\t\t\t\t\t\t['%ss', 'in %ss'],\n\t\t\t\t\t\t\t['1m', 'in 1m'],\n\t\t\t\t\t\t\t['%sm', 'in %sm'],\n\t\t\t\t\t\t\t['1h', 'in 1h'],\n\t\t\t\t\t\t\t['%sh', 'in %sh'],\n\t\t\t\t\t\t\t['1d', 'in 1d'],\n\t\t\t\t\t\t\t['%sd', 'in %sd'],\n\t\t\t\t\t\t\t['1w', 'in 1w'],\n\t\t\t\t\t\t\t['%sw', 'in %sw'],\n\t\t\t\t\t\t\t['1mo', 'in 1mo'],\n\t\t\t\t\t\t\t['%smo', 'in %smo'],\n\t\t\t\t\t\t\t['1yr', 'in 1yr'],\n\t\t\t\t\t\t\t['%syr', 'in %syr']\n\t\t\t\t\t\t][index]\n\t\t\t\t\t})\n\n\t\t\t\t\t// Check if UnoCSS is loaded by watching the removal of the `un-cloak` attribute from the body.\n\t\t\t\t\t// It's a vanilla alternative to `jQuery.ready`.\n\t\t\t\t\tconst observer = new MutationObserver((mutationList) => {\n\t\t\t\t\t\tmutationList.forEach((mutation) => {\n\t\t\t\t\t\t\tswitch (mutation.type) {\n\t\t\t\t\t\t\t\tcase 'attributes':\n\t\t\t\t\t\t\t\t\tswitch (mutation.attributeName) {\n\t\t\t\t\t\t\t\t\t\tcase 'un-cloak':\n\t\t\t\t\t\t\t\t\t\t\tthis.scrollIntoView()\n\t\t\t\t\t\t\t\t\t\t\tthis.focus()\n\t\t\t\t\t\t\t\t\t\t\tobserver.disconnect()\n\t\t\t\t\t\t\t\t\t}\n\t\t\t\t\t\t\t\t\tbreak\n\t\t\t\t\t\t\t}\n\t\t\t\t\t\t})\n\t\t\t\t\t})\n\t\t\t\t\tobserver.observe(document.body, {\n\t\t\t\t\t\tattributeFilter: ['un-cloak']\n\t\t\t\t\t})\n\t\t\t\t},\n\t\t\t\tscrollIntoView() {\n\t\t\t\t\tthis.$nextTick(() => { this.$refs.anchor.scrollIntoView() })\n\t\t\t\t\t\n\t\t\t\t},\n\t\t\t\tfocus() {\n\t\t\t\t\tthis.$nextTick(() => { this.$refs.input.focus() })\n\t\t\t\t},\n\t\t\t\ttimeago() {\n\t\t\t\t\tthis.$nextTick(() => { render(this.$el, 'mini-locale', { minInterval: 10 }) })\n\t\t\t\t}\n\t\t\t}))\n    })\n\n\t\tAlpine.start()\n\t</script><div class=\"relative\">
+<div hx-ext=\"ws\" ws-connect=\"/chatroom\" class=\"flex flex-col p-4 container mx-auto max-h-screen\" x-data=\"chat\">
+</div></div>
+<div id=\"error\" hx-swap-oob=\"true\">
+<div class=\"
+\">
+<div class=\"
+\"></div>
+</div>
+</div>
+<div id=\"online\" class=\"text-xs text-coolgray-400\" hx-swap-oob=\"true\">
+</div>
+<div class=\"flex-none flex justify-between items-center flex-wrap gap-4\"><div><div class=\"flex items-center gap-2 uppercase\"><div class=\"i-carbon-chat z-2\"></div><div><span class=\"font-extralight\">Chatroom </span>Demo</div></div>
+</div><div class=\"text-lightblue-200 text-sm\">
+</div></div>
+<div hx-swap-oob=\"beforebegin:#messages&gt;li:last-child\">
+</div>
+<li class=\"
+\"><div class=\"w-fit flex flex-col px-3 py-2 mr-4 text-xs bg-coolgray-700 border-t-1 border-t-coolgray-500 border-t-opacity-50 shadow-sm bg-opacity-50 rounded-md\">
+<div class=\"font-semibold\">
+</div>
+<div class=\"
+\"><div class=\"flex-nowrap font-light break-words\">
+</div><div class=\"timeago self-end shrink-0 mt-1 text-[0.65rem] line-height-[0.80rem] font-light text-coolgray-400\" datetime=\"
+\" x-init=\"timeago()\"></div></div></div></li>
+<ul id=\"messages\" class=\"flex-initial grow mt-4 space-y-2 overflow-y-scroll transition-all\">
+<li class=\"overflow-anchor-auto h-0.5\" x-ref=\"anchor\" x-init=\"scrollIntoView()\"></li></ul>
+<form id=\"form\" hx-swap-oob=\"true\" class=\"flex-none mt-4 transition-all\" ws-send><div class=\"relative flex\"><div class=\"absolute z-2 top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-2/3\">
+<div class=\"
+\">
+</div>
+</div>
+<input name=\"chat_message\" type=\"text\" placeholder=\"
+\"
+ disabled
+ maxlength=\"256\" required x-ref=\"input\" x-init=\"focus()\" class=\"
+\"></div></form>
+<div class=\"flex-none mt-4 text-xs text-center text-coolgray-400\">Copyright (c) 
+. All rights reserved.</div>
