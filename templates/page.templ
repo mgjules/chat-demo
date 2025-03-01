@@ -22,7 +22,7 @@ templ Page(user *user.User, room *chat.Room, cErr *chat.Error) {
 			  // UnoCSS
 				import { presetWind, presetIcons } from 'https://cdn.jsdelivr.net/npm/unocss@0.55.7/+esm'
 				import initUnocssRuntime from 'https://cdn.jsdelivr.net/npm/@unocss/runtime@0.55.7/+esm'
-				import reset from 'https://cdn.jsdelivr.net/npm/@unocss/reset@0.55.7/tailwind-compat.css' assert { type: 'css' }
+				import reset from 'https://cdn.jsdelivr.net/npm/@unocss/reset@0.55.7/tailwind-compat.css' with { type: 'css' };
 
 				document.adoptedStyleSheets = [reset];
 
@@ -43,7 +43,8 @@ templ Page(user *user.User, room *chat.Room, cErr *chat.Error) {
 				})
 			</script>
 		</head>
-		<body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">@Chat(user, room, cErr)</body>
+		<body un-cloak class="bg-coolgray-800 text-coolgray-200 scroll-smooth">
+			@Chat(user, room, cErr)
+		</body>
 	</html>
 }
-
