@@ -45,7 +45,7 @@ func run() error {
 
 	port := os.Getenv("HTTP_PORT")
 	if port == "" {
-		return errors.New("missing HTTP_PORT environment variable")
+		port = "8080"
 	}
 
 	jwt := jwtauth.New("HS256", []byte(secret), nil)
